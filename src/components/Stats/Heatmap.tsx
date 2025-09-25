@@ -1,0 +1,508 @@
+// components/Stats/Heatmap.tsx
+import React, { useState, useMemo, useCallback } from 'react';
+import { Calendar, TrendingUp, Flame, Target } from 'lucide-react';
+import { HeatmapData, HeatmapResponse } from '@/types/api';
+import { useStats } from '@/hooks/useStats';
+
+interface HeatmapProps {
+  data: HeatmapResponse;
+  compact?: boolean;
+  showLegend?: boolean;
+  showStats?: boolean;
+  className?: string;
+}
+
+interface DayData extends HeatmapData {
+  dayOfWeek: number;
+  weekIndex: number;
+  month: string;
+  dayOfMonth: number;
+  isToday: boolean;
+  isCurrentMonth: boolean;
+}
+
+// Intensity level colors (GitHub-inspired)
+const INTENSITY_COLORS = [
+  'bg-gray-100 dark:bg-gray-800', // 0 - no activity
+  'bg-green-200 dark:bg-green-900', // 1 - low activity
+  'bg-green-300 dark:bg-green-700', // 2 - medium-low activity
+  'bg-green-400 dark:bg-green-600', // 3 - medium-high activity
+  'bg-green-500 dark:bg-green-500', // 4 - high activity
+];
+
+const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export default function Heatmap({ 
+  data, 
+  compact = false, 
+  showLegend = true, 
+  showStats = true,
+  className = '' 
+}: HeatmapProps) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+
+  // Transform raw data into grid format
+  const gridData = useMemo(() => {
+    const startDate = new Date(data.start_date);
+    const endDate = new Date(data.end_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Create a map of date strings to data
+    const dataMap = new Map<string, HeatmapData>();
+    data.data.forEach(item => {
+      dataMap.set(item.date, item);
+    });
+
+    // Generate all dates in range
+    const days: DayData[] = [];
+    const current = new Date(startDate);
+    
+    // Start from the beginning of the week that contains startDate
+    const startOfWeek = new Date(current);
+    startOfWeek.setDate(current.getDate() - current.getDay());
+
+    let weekIndex = 0;
+    const processDate = new Date(startOfWeek);
+
+    while (processDate <= endDate) {
+      const dateStr = processDate.toISOString().split('T')[0];
+      const dayData = dataMap.get(dateStr);
+      
+      days.push({
+        date: dateStr,
+        count: dayData?.count || 0,
+        intensity: dayData?.intensity || 0,
+        dayOfWeek: processDate.getDay(),
+        weekIndex,
+        month: MONTH_NAMES[processDate.getMonth()],
+        dayOfMonth: processDate.getDate(),
+        isToday: processDate.getTime() === today.getTime(),
+        isCurrentMonth: processDate.getMonth() === today.getMonth() && 
+                        processDate.getFullYear() === today.getFullYear(),
+      });
+
+      processDate.setDate(processDate.getDate() + 1);
+      
+      if (processDate.getDay() === 0) {
+        weekIndex++;
+      }
+    }
+
+    return days;
+  }, [data]);
+
+  // Group data by weeks for rendering
+  const weeks = useMemo(() => {
+    const weeksMap = new Map<number, DayData[]>();
+    
+    gridData.forEach(day => {
+      if (!weeksMap.has(day.weekIndex)) {
+        weeksMap.set(day.weekIndex, []);
+      }
+      weeksMap.get(day.weekIndex)!.push(day);
+    });
+
+    return Array.from(weeksMap.values()).map(week => {
+      // Ensure each week has 7 days (fill missing days with empty data)
+      const fullWeek = Array(7).fill(null).map((_, index) => {
+        return week.find(day => day.dayOfWeek === index) || {
+          date: '',
+          count: 0,
+          intensity: 0,
+          dayOfWeek: index,
+          weekIndex: week[0]?.weekIndex || 0,
+          month: '',
+          dayOfMonth: 0,
+          isToday: false,
+          isCurrentMonth: false,
+        };
+      });
+      return fullWeek;
+    });
+  }, [gridData]);
+
+  // Get month labels for display
+  const monthLabels = useMemo(() => {
+    const labels: { month: string; weekIndex: number }[] = [];
+    const seenMonths = new Set<string>();
+    
+    weeks.forEach((week, index) => {
+      const firstDay = week.find(day => day.date);
+      if (firstDay && !seenMonths.has(firstDay.month)) {
+        labels.push({ month: firstDay.month, weekIndex: index });
+        seenMonths.add(firstDay.month);
+      }
+    });
+    
+    return labels;
+  }, [weeks]);
+
+  // Handle day click
+  const handleDayClick = useCallback((day: DayData) => {
+    if (!day.date) return;
+    setSelectedDate(selectedDate === day.date ? null : day.date);
+  }, [selectedDate]);
+
+  // Handle day hover
+  const handleDayHover = useCallback((day: DayData | null) => {
+    setHoveredDate(day?.date || null);
+  }, []);
+
+  // Get tooltip content for a day
+  const getTooltipContent = useCallback((day: DayData) => {
+    if (!day.date) return null;
+    
+    const date = new Date(day.date);
+    const formattedDate = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    return {
+      date: formattedDate,
+      count: day.count,
+      intensity: day.intensity,
+      label: day.count === 0 ? 'No sessions' : 
+              day.count === 1 ? '1 session' : 
+              `${day.count} sessions`,
+    };
+  }, []);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const totalDays = gridData.filter(d => d.date).length;
+    const activeDays = gridData.filter(d => d.count > 0).length;
+    const totalSessions = gridData.reduce((sum, d) => sum + d.count, 0);
+    const averageSessions = totalSessions / Math.max(totalDays, 1);
+    
+    return {
+      totalSessions: data.total_sessions,
+      activeDays,
+      totalDays,
+      averageSessions: Math.round(averageSessions * 10) / 10,
+      currentStreak: data.current_streak,
+      longestStreak: data.longest_streak,
+    };
+  }, [data, gridData]);
+
+  const cellSize = compact ? 'w-2.5 h-2.5' : 'w-3 h-3';
+  const gap = compact ? 'gap-0.5' : 'gap-1';
+
+  return (
+    <div className={`space-y-4 ${className}`}>
+      {/* Header with Stats */}
+      {showStats && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center space-x-1">
+              <Target className="w-4 h-4" />
+              <span>{stats.totalSessions} sessions</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Calendar className="w-4 h-4" />
+              <span>{stats.activeDays}/{stats.totalDays} days active</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Flame className="w-4 h-4" />
+              <span>{stats.currentStreak} day streak</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <TrendingUp className="w-4 h-4" />
+              <span>{stats.averageSessions} avg/day</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Heatmap Grid */}
+      <div className="relative">
+        {/* Month Labels */}
+        {!compact && (
+          <div className="flex text-xs text-gray-500 dark:text-gray-400 mb-2">
+            {monthLabels.map(({ month, weekIndex }) => (
+              <div
+                key={`${month}-${weekIndex}`}
+                className="flex-shrink-0 text-center"
+                style={{ 
+                  marginLeft: `${weekIndex * (compact ? 14 : 16)}px`,
+                  width: '24px'
+                }}
+              >
+                {month}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex">
+          {/* Day Labels */}
+          {!compact && (
+            <div className={`flex flex-col justify-between text-xs text-gray-500 dark:text-gray-400 pr-2 ${cellSize}`}>
+              {DAY_NAMES.filter((_, i) => i % 2 === 1).map(day => (
+                <div key={day} className="h-3 flex items-center">
+                  {day}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Heatmap Grid */}
+          <div className={`flex ${gap} overflow-x-auto scrollbar-thin`}>
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} className={`flex flex-col ${gap}`}>
+                {week.map((day, dayIndex) => (
+                  <div
+                    key={`${weekIndex}-${dayIndex}`}
+                    className={`
+                      ${cellSize} rounded-sm cursor-pointer border border-gray-200 dark:border-gray-600
+                      ${day.date ? INTENSITY_COLORS[day.intensity] : 'bg-transparent border-transparent'}
+                      ${day.isToday ? 'ring-2 ring-blue-500' : ''}
+                      ${selectedDate === day.date ? 'ring-2 ring-purple-500' : ''}
+                      ${hoveredDate === day.date ? 'ring-1 ring-gray-400' : ''}
+                      transition-all duration-150 hover:scale-110
+                    `}
+                    onClick={() => handleDayClick(day)}
+                    onMouseEnter={() => handleDayHover(day)}
+                    onMouseLeave={() => handleDayHover(null)}
+                    title={day.date ? getTooltipContent(day)?.label : undefined}
+                    aria-label={day.date ? `${getTooltipContent(day)?.date}: ${getTooltipContent(day)?.label}` : undefined}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tooltip */}
+        {hoveredDate && (
+          <div className="absolute z-10 bg-black text-white text-xs rounded-lg px-3 py-2 pointer-events-none transform -translate-y-full -translate-x-1/2 left-1/2 top-0">
+            {(() => {
+              const day = gridData.find(d => d.date === hoveredDate);
+              if (!day) return null;
+              const tooltip = getTooltipContent(day);
+              return (
+                <div className="whitespace-nowrap">
+                  <div className="font-medium">{tooltip?.label}</div>
+                  <div className="text-gray-300">{tooltip?.date}</div>
+                </div>
+              );
+            })()}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-black" />
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      {showLegend && (
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+          <span>Less</span>
+          <div className={`flex ${gap}`}>
+            {INTENSITY_COLORS.map((color, index) => (
+              <div
+                key={index}
+                className={`${cellSize} ${color} rounded-sm border border-gray-200 dark:border-gray-600`}
+                title={`Intensity level ${index}`}
+              />
+            ))}
+          </div>
+          <span>More</span>
+        </div>
+      )}
+
+      {/* Selected Date Details */}
+      {selectedDate && (() => {
+        const selectedDay = gridData.find(d => d.date === selectedDate);
+        if (!selectedDay) return null;
+        
+        return (
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-900 dark:text-white">
+                {new Date(selectedDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </h4>
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="text-gray-400 hover:text-gray-600 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Sessions:</span>
+                <span className="ml-2 font-medium">{selectedDay.count}</span>
+              </div>
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Intensity:</span>
+                <span className="ml-2 font-medium">
+                  {selectedDay.intensity === 0 ? 'None' :
+                   selectedDay.intensity === 1 ? 'Low' :
+                   selectedDay.intensity === 2 ? 'Medium' :
+                   selectedDay.intensity === 3 ? 'High' : 'Very High'}
+                </span>
+              </div>
+            </div>
+
+            {/* Intensity Bar */}
+            <div className="mt-3">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    selectedDay.intensity === 0 ? 'bg-gray-300' :
+                    selectedDay.intensity === 1 ? 'bg-green-300' :
+                    selectedDay.intensity === 2 ? 'bg-green-400' :
+                    selectedDay.intensity === 3 ? 'bg-green-500' : 'bg-green-600'
+                  }`}
+                  style={{ width: `${(selectedDay.intensity / 4) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {selectedDay.count > 0 && (
+              <div className="mt-3 text-xs text-gray-500">
+                Estimated focus time: ~{selectedDay.count * 25} minutes
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Summary Stats */}
+      {!compact && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalSessions}
+            </div>
+            <div className="text-sm text-gray-500">Total Sessions</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.currentStreak}
+            </div>
+            <div className="text-sm text-gray-500">Current Streak</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.longestStreak}
+            </div>
+            <div className="text-sm text-gray-500">Longest Streak</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {Math.round((stats.activeDays / stats.totalDays) * 100)}%
+            </div>
+            <div className="text-sm text-gray-500">Active Days</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Hook for fetching heatmap data
+export function useHeatmapData(startDate?: string, endDate?: string) {
+  const { getHeatmapData } = useStats();
+  const [data, setData] = useState<HeatmapResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await getHeatmapData({ start_date: startDate, end_date: endDate });
+      setData(response);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch heatmap data'));
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate, getHeatmapData]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
+}
+
+// Utility function to generate mock heatmap data for development
+export function generateMockHeatmapData(days: number = 365): HeatmapResponse {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - days);
+
+  const data: HeatmapData[] = [];
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let tempStreak = 0;
+  let totalSessions = 0;
+
+  for (let i = 0; i < days; i++) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + i);
+    
+    // Generate semi-realistic activity pattern
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isToday = date.toDateString() === endDate.toDateString();
+    
+    // Lower activity on weekends and random variation
+    const baseActivity = isWeekend ? 0.3 : 0.7;
+    const randomFactor = Math.random();
+    const hasActivity = randomFactor < baseActivity;
+    
+    let count = 0;
+    let intensity = 0;
+    
+    if (hasActivity) {
+      count = Math.floor(Math.random() * 8) + 1; // 1-8 sessions
+      intensity = Math.min(4, Math.floor(count / 2) + 1); // Intensity based on count
+      totalSessions += count;
+      tempStreak++;
+      
+      if (isToday || date < endDate) {
+        currentStreak = tempStreak;
+      }
+    } else {
+      tempStreak = 0;
+    }
+    
+    longestStreak = Math.max(longestStreak, tempStreak);
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      count,
+      intensity,
+    });
+  }
+
+  return {
+    data,
+    start_date: startDate.toISOString().split('T')[0],
+    end_date: endDate.toISOString().split('T')[0],
+    total_sessions: totalSessions,
+    current_streak: currentStreak,
+    longest_streak: longestStreak,
+  };
+}

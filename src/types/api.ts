@@ -1,7 +1,4 @@
-// DoroBuddy API Contract - TypeScript Interfaces and Endpoints
-// File: types/api.ts
-
-// Base response wrapper
+// src/types/api.ts - Complete API Types for App Router
 export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
@@ -103,6 +100,9 @@ export interface CreateTaskRequest {
   estimated_pomodoros?: number;
   project?: string;
   due_date?: string;
+  //addition
+  completed?: boolean; // <-- Add this
+  completed_pomodoros?: number; // <-- Add this
 }
 
 export interface UpdateTaskRequest {
@@ -277,180 +277,6 @@ export interface SpotifyPlaybackState {
     progress_ms: number;
   };
   device?: SpotifyPlayer;
-}
-
-// API Endpoints Structure
-export const API_ENDPOINTS = {
-  // Authentication
-  AUTH: {
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
-    LOGOUT: '/api/auth/logout',
-    REFRESH: '/api/auth/refresh',
-    PROFILE: '/api/auth/profile',
-  },
-
-  // User Settings
-  SETTINGS: {
-    GET: '/api/settings',
-    UPDATE: '/api/settings',
-  },
-
-  // Tasks Management
-  TASKS: {
-    LIST: '/api/tasks',
-    CREATE: '/api/tasks',
-    GET: (id: string) => `/api/tasks/${id}`,
-    UPDATE: (id: string) => `/api/tasks/${id}`,
-    DELETE: (id: string) => `/api/tasks/${id}`,
-    REORDER: '/api/tasks/reorder',
-  },
-
-  // Pomodoro Sessions
-  SESSIONS: {
-    LIST: '/api/sessions',
-    CREATE: '/api/sessions',
-    GET: (id: string) => `/api/sessions/${id}`,
-    UPDATE: (id: string) => `/api/sessions/${id}`,
-    ACTIVE: '/api/sessions/active',
-    COMPLETE: (id: string) => `/api/sessions/${id}/complete`,
-  },
-
-  // Statistics and Heatmap
-  STATS: {
-    HEATMAP: '/api/stats/heatmap',
-    WEEKLY: '/api/stats/weekly',
-    MONTHLY: '/api/stats/monthly',
-    DAILY: '/api/stats/daily',
-  },
-
-  // Playlists
-  PLAYLISTS: {
-    LIST: '/api/playlists',
-    CREATE: '/api/playlists',
-    GET: (id: string) => `/api/playlists/${id}`,
-    UPDATE: (id: string) => `/api/playlists/${id}`,
-    DELETE: (id: string) => `/api/playlists/${id}`,
-    PUBLIC: '/api/playlists/public',
-  },
-
-  // Spotify Integration
-  SPOTIFY: {
-    AUTH: '/api/spotify/auth',
-    CALLBACK: '/api/spotify/callback',
-    REFRESH: '/api/spotify/refresh',
-    PLAYER: '/api/spotify/player',
-    PLAY: '/api/spotify/play',
-    PAUSE: '/api/spotify/pause',
-    NEXT: '/api/spotify/next',
-    PREVIOUS: '/api/spotify/previous',
-    VOLUME: '/api/spotify/volume',
-    SEARCH: '/api/spotify/search',
-    DISCONNECT: '/api/spotify/disconnect',
-  },
-
-  // Health and Monitoring
-  HEALTH: '/api/health',
-  METRICS: '/api/metrics',
-} as const;
-
-// Request/Response type mappings for each endpoint
-export interface ApiEndpoints {
-  // Authentication
-  'POST /api/auth/login': {
-    request: LoginRequest;
-    response: AuthResponse;
-  };
-  'POST /api/auth/register': {
-    request: RegisterRequest;
-    response: AuthResponse;
-  };
-  'POST /api/auth/logout': {
-    request: {};
-    response: { message: string };
-  };
-  'POST /api/auth/refresh': {
-    request: { refresh_token: string };
-    response: { access_token: string; expires_at: string };
-  };
-  'GET /api/auth/profile': {
-    request: {};
-    response: User;
-  };
-
-  // Settings
-  'GET /api/settings': {
-    request: {};
-    response: UserSettings;
-  };
-  'PUT /api/settings': {
-    request: UpdateSettingsRequest;
-    response: UserSettings;
-  };
-
-  // Tasks
-  'GET /api/tasks': {
-    request: { page?: number; limit?: number; completed?: boolean };
-    response: TasksResponse;
-  };
-  'POST /api/tasks': {
-    request: CreateTaskRequest;
-    response: Task;
-  };
-  'GET /api/tasks/{id}': {
-    request: {};
-    response: Task;
-  };
-  'PUT /api/tasks/{id}': {
-    request: UpdateTaskRequest;
-    response: Task;
-  };
-  'DELETE /api/tasks/{id}': {
-    request: {};
-    response: { message: string };
-  };
-
-  // Sessions
-  'GET /api/sessions': {
-    request: { page?: number; limit?: number; date?: string };
-    response: SessionsResponse;
-  };
-  'POST /api/sessions': {
-    request: StartSessionRequest;
-    response: PomodoroSession;
-  };
-  'PUT /api/sessions/{id}': {
-    request: UpdateSessionRequest;
-    response: PomodoroSession;
-  };
-  'GET /api/sessions/active': {
-    request: {};
-    response: PomodoroSession | null;
-  };
-
-  // Stats
-  'GET /api/stats/heatmap': {
-    request: { start_date?: string; end_date?: string };
-    response: HeatmapResponse;
-  };
-  'GET /api/stats/weekly': {
-    request: { weeks?: number };
-    response: WeeklyStats[];
-  };
-
-  // Spotify
-  'GET /api/spotify/auth': {
-    request: {};
-    response: { auth_url: string };
-  };
-  'POST /api/spotify/callback': {
-    request: SpotifyAuthRequest;
-    response: { success: boolean };
-  };
-  'GET /api/spotify/player': {
-    request: {};
-    response: SpotifyPlaybackState;
-  };
 }
 
 // Error response types
