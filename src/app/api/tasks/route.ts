@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -46,14 +46,18 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', error.message, error.details);
+      return NextResponse.json({ error: error.message, details: error.details }, { status: 400 });
+    }
 
     return NextResponse.json(task, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to create task:', error);
     return NextResponse.json(
-      { error: 'Failed to create task' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
 }
+

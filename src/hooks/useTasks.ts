@@ -34,68 +34,87 @@ export function useTasks() {
     }
   }
 
-  // Create task
-  const createTask = async (taskData: CreateTaskRequest) => {
-    try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData),
-      })
+// Create task
+const createTask = async (taskData: CreateTaskRequest) => {
+  try {
+    const response = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taskData),
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to create task')
-      }
+    const result = await response.json();
+    console.log('createTask API response:', result); // 👀 debug here
 
-      const newTask = await response.json()
-      setTasks(prev => [...prev, newTask])
-      return newTask
-    } catch (err) {
-      throw err
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to create task');
     }
+
+    setTasks(prev => [...prev, result]);
+    return result;
+  } catch (err) {
+    console.error('createTask error:', err);
+    throw err;
   }
+};
+
+
 
   // Update task
-  const updateTask = async (id: string, updates: UpdateTaskRequest) => {
-    try {
-      const response = await fetch(`/api/tasks/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      })
+const updateTask = async (id: string, updates: Partial<Task>) => {
+  try {
+    const response = await fetch(`/api/tasks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to update task')
-      }
-
-      const updatedTask = await response.json()
-      setTasks(prev => prev.map(task => task.id === id ? updatedTask : task))
-      return updatedTask
-    } catch (err) {
-      throw err
+    if (!response.ok) {
+      throw new Error("Failed to update task");
     }
+
+    const updatedTask = await response.json();
+
+    // ✅ update local state with the updated task
+    setTasks((prev) =>
+      prev.map((task) => (task.id === id ? updatedTask : task))
+    );
+
+    return updatedTask;
+  } catch (err) {
+    console.error("Error updating task:", err);
+    throw err;
   }
+};
+
 
   // Delete task
-  const deleteTask = async (id: string) => {
-    try {
-      const response = await fetch(`/api/tasks/${id}`, {
-        method: 'DELETE',
-      })
+const deleteTask = async (id: string) => {
+  try {
+    const response = await fetch(`/api/tasks/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to delete task')
-      }
+    const result = await response.json();
+    console.log("deleteTask API response:", result); // 👀 debug log
 
-      setTasks(prev => prev.filter(task => task.id !== id))
-    } catch (err) {
-      throw err
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to delete task");
     }
+
+    // ✅ Update local state only if deletion succeeded
+    setTasks((prev) => prev.filter((task) => task.id !== id));
+
+    return result;
+  } catch (err) {
+    console.error("deleteTask error:", err);
+    throw err;
   }
+};
+
 
   // Reorder tasks
   const reorderTasks = async (updates: { id: string; order_index: number }[]) => {

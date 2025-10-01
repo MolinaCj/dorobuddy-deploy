@@ -19,6 +19,7 @@ export default function LoginPage() {
     full_name: '',
     username: '',
   })
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -68,14 +69,15 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!validateForm()) return
-
+    
     setIsSubmitting(true)
     setErrors({})
-
+    setSuccessMessage(null) // ✅ reset message each submit
+    
     try {
       let result
       
@@ -91,8 +93,13 @@ export default function LoginPage() {
           full_name: formData.full_name,
           username: formData.username || undefined,
         })
+      
+        // ✅ Show success message if no error
+        if (!result.error) {
+          setSuccessMessage("Registration successful! Please check your email to confirm your account.")
+        }
       }
-
+    
       if (result.error) {
         setErrors({ submit: result.error })
       }
@@ -108,9 +115,9 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+          {/* <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
             <span className="text-2xl">🍅</span>
-          </div>
+          </div> */}
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
             {isLogin ? 'Welcome back to DoroBuddy' : 'Create your DoroBuddy account'}
           </h2>
@@ -299,6 +306,36 @@ export default function LoginPage() {
                   </h3>
                   <p className="mt-1 text-sm text-red-700 dark:text-red-300">
                     {errors.submit}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Success */}
+          {!errors.submit && successMessage && (
+            <div className="rounded-md bg-green-50 dark:bg-green-900/50 p-4">
+              <div className="flex">
+                <svg
+                  className="h-5 w-5 text-green-500"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                    {isLogin ? "Sign in successful" : "Registration successful"}
+                  </h3>
+                  <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                    {successMessage}
                   </p>
                 </div>
               </div>

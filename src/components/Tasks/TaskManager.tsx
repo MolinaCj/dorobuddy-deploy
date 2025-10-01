@@ -223,7 +223,7 @@ export default function TaskManager({ selectedTaskId, onTaskSelect, compact = fa
                 ...prev,
                 completed: e.target.value === '' ? null : e.target.value === 'true'
               }))}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value="">All Tasks</option>
               <option value="false">Active</option>
@@ -237,7 +237,7 @@ export default function TaskManager({ selectedTaskId, onTaskSelect, compact = fa
                 ...prev,
                 priority: e.target.value ? parseInt(e.target.value) : null
               }))}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value="">All Priorities</option>
               {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
@@ -253,7 +253,7 @@ export default function TaskManager({ selectedTaskId, onTaskSelect, compact = fa
                   ...prev,
                   project: e.target.value || null
                 }))}
-                className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <option value="">All Projects</option>
                 {projects.map(project => (
