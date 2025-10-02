@@ -6,11 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gen:types": "npx supabase@latest gen types typescript --project-id ubakibdfwtjluedgtckw --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
-    "@supabase/supabase-js": "^2.57.4",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.58.0",
     "@vercel/kv": "^3.0.0",
     "lucide-react": "^0.544.0",
     "next": "15.5.3",

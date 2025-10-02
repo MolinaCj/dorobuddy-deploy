@@ -125,49 +125,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (credentials: RegisterRequest) => {
     try {
       setState(prev => ({ ...prev, loading: true }))
-      const { data, error } = await signUpWithEmail(credentials.email, credentials.password, {
-        username: credentials.username,
-        full_name: credentials.full_name,
+    
+      // Call your server-side signup API
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
       })
-
-      if (error) {
+    
+      const data = await response.json()
+    
+      if (!response.ok) {
         setState(prev => ({ ...prev, loading: false }))
-        return { error: error.message }
+        return { error: data.error || 'Registration failed' }
       }
-
-      if (data.user) {
-        await supabase.from('profiles').insert({
-          id: data.user.id,
-          username: credentials.username,
-          full_name: credentials.full_name,
-        })
-
-        await supabase.from('user_settings').insert({
-          user_id: data.user.id,
-          work_duration: 1500,
-          short_break_duration: 300,
-          long_break_duration: 1800,
-          sessions_until_long_break: 4,
-          auto_start_breaks: false,
-          auto_start_pomodoros: false,
-          theme: 'default',
-          notification_sound: 'bell',
-          break_sound: 'chime',
-          master_volume: 0.7,
-          notification_volume: 0.8,
-          music_volume: 0.5,
-          ambient_volume: 0.3,
-          spotify_enabled: false,
-        })
-      }
-
+    
       setState(prev => ({ ...prev, loading: false }))
-      return {}
-    } catch {
+    
+      return { user: data.user }
+    } catch (err) {
+      console.error('Signup error:', err)
       setState(prev => ({ ...prev, loading: false }))
       return { error: 'An unexpected error occurred during registration' }
     }
   }
+
+  // const signUp = async (credentials: RegisterRequest) => {
+  //   try {
+  //     setState(prev => ({ ...prev, loading: true }))
+  //     const { data, error } = await signUpWithEmail(credentials.email, credentials.password, {
+  //       username: credentials.username,
+  //       full_name: credentials.full_name,
+  //     })
+
+  //     if (error) {
+  //       setState(prev => ({ ...prev, loading: false }))
+  //       return { error: error.message }
+  //     }
+
+  //     if (data.user) {
+  //       await supabase.from('profiles').insert({
+  //         id: data.user.id,
+  //         username: credentials.username,
+  //         full_name: credentials.full_name,
+  //       })
+
+  //       await supabase.from('user_settings').insert({
+  //         user_id: data.user.id,
+  //         work_duration: 1500,
+  //         short_break_duration: 300,
+  //         long_break_duration: 1800,
+  //         sessions_until_long_break: 4,
+  //         auto_start_breaks: false,
+  //         auto_start_pomodoros: false,
+  //         theme: 'default',
+  //         notification_sound: 'bell',
+  //         break_sound: 'chime',
+  //         master_volume: 0.7,
+  //         notification_volume: 0.8,
+  //         music_volume: 0.5,
+  //         ambient_volume: 0.3,
+  //         spotify_enabled: false,
+  //       })
+  //     }
+
+  //     setState(prev => ({ ...prev, loading: false }))
+  //     return {}
+  //   } catch {
+  //     setState(prev => ({ ...prev, loading: false }))
+  //     return { error: 'An unexpected error occurred during registration' }
+  //   }
+  // }
 
   const signOut = async () => {
     try {
