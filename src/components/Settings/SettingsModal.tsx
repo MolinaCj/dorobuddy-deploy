@@ -82,18 +82,27 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setHasChanges(true);
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      await updateSettings(formData);
-      setHasChanges(false);
-      onClose();
-    } catch (error) {
-      console.error('Failed to update settings:', error);
-    }
-  };
+// Handle form submission
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    // Apply safe defaults if values are null/empty
+    const safeData = {
+      ...formData,
+      work_duration: formData.work_duration ?? 1500,          // 25m default
+      short_break_duration: formData.short_break_duration ?? 300, // 5m default
+      long_break_duration: formData.long_break_duration ?? 900,   // 15m default
+    };
+
+    await updateSettings(safeData);
+    setHasChanges(false);
+    onClose();
+  } catch (error) {
+    console.error("Failed to update settings:", error);
+  }
+};
+
 
   // Handle reset to defaults
   const handleReset = () => {
@@ -261,8 +270,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           type="number"
                           min="1"
                           max="120"
-                          value={Math.floor((formData.work_duration || 1500) / 60)}
-                          onChange={(e) => handleInputChange('work_duration', parseInt(e.target.value) * 60)}
+                          value={
+                            formData.work_duration !== undefined && formData.work_duration !== null
+                              ? Math.floor(formData.work_duration / 60).toString()
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            handleInputChange(
+                              "work_duration",
+                              val === "" ? null : parseInt(val) * 60
+                            );
+                          }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-500">minutes</span>
@@ -281,8 +300,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           type="number"
                           min="1"
                           max="30"
-                          value={Math.floor((formData.short_break_duration || 300) / 60)}
-                          onChange={(e) => handleInputChange('short_break_duration', parseInt(e.target.value) * 60)}
+                          value={
+                            formData.short_break_duration !== undefined && formData.short_break_duration !== null
+                              ? Math.floor(formData.short_break_duration / 60).toString()
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            handleInputChange(
+                              "short_break_duration",
+                              val === "" ? null : parseInt(val) * 60
+                            );
+                          }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-500">minutes</span>
@@ -298,8 +327,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           type="number"
                           min="5"
                           max="60"
-                          value={Math.floor((formData.long_break_duration || 1800) / 60)}
-                          onChange={(e) => handleInputChange('long_break_duration', parseInt(e.target.value) * 60)}
+                          value={
+                            formData.long_break_duration !== undefined && formData.long_break_duration !== null
+                              ? Math.floor(formData.long_break_duration / 60).toString()
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            handleInputChange(
+                              "long_break_duration",
+                              val === "" ? null : parseInt(val) * 60
+                            );
+                          }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-500">minutes</span>
