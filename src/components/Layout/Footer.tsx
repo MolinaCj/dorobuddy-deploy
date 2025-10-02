@@ -104,7 +104,7 @@ export default function Footer({ className = '', compact = false }: FooterProps)
               <div className="flex items-center space-x-1 text-sm text-gray-500">
                 <span>Made with</span>
                 <Heart className="w-4 h-4 text-red-500 fill-current" />
-                <span>for productivity</span>
+                <span></span>
               </div>
 
               <div className="flex items-center space-x-4">
