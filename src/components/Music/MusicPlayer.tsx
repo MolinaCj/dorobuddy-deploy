@@ -100,6 +100,13 @@ export default function MusicPlayer({
       duration: 200,
       url: '/audio/ambient/white-noise.mp3',
     },
+    {
+      id: 'fireplace1',
+      name: 'Fire Place',
+      artist: 'Fire Place',
+      duration: 200,
+      url: '/audio/ambient/fireplace.mp3',
+    },
     // Add more fallback tracks
   ]);
 

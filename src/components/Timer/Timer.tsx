@@ -1,25 +1,10 @@
-// src/components/Timer/Timer.tsx - Complete Timer Component for App Router
+// src/components/Timer/Timer.tsx - Fixed Timer Component
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Play, Pause, Square, RotateCcw, Settings } from 'lucide-react'
-import { SessionType } from '@/types/api'
-
-interface TimerPreset {
-  id: string
-  name: string
-  work: number
-  shortBreak: number
-  longBreak: number
-  color: string
-}
-
-const DEFAULT_PRESETS: TimerPreset[] = [
-  { id: 'classic', name: 'Classic', work: 1500, shortBreak: 300, longBreak: 1800, color: 'bg-red-500' },
-  { id: 'short', name: 'Short', work: 900, shortBreak: 180, longBreak: 900, color: 'bg-blue-500' },
-  { id: 'long', name: 'Long Focus', work: 3000, shortBreak: 600, longBreak: 2400, color: 'bg-green-500' },
-  { id: 'ultrashort', name: 'Micro', work: 300, shortBreak: 60, longBreak: 300, color: 'bg-purple-500' },
-]
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Play, Pause, RotateCcw, Settings, Coffee, Zap, SkipForward } from 'lucide-react'
+import { useSettings } from '@/hooks/useSettings'
+import { useAudio } from '@/hooks/useAudio'
 
 interface TimerProps {
   selectedTaskId?: string
@@ -27,421 +12,544 @@ interface TimerProps {
   onOpenSettings: () => void
 }
 
+type TimerMode = 'work' | 'shortBreak' | 'longBreak'
+
+interface TimerState {
+  mode: TimerMode
+  timeRemaining: number
+  isActive: boolean
+  sessionsCompleted: number
+  isReversed: boolean
+}
+
 export default function Timer({ selectedTaskId, onSessionComplete, onOpenSettings }: TimerProps) {
-  const [selectedPreset, setSelectedPreset] = useState<string>('classic')
-  const [reverseMode, setReverseMode] = useState(false)
-  const [sessionsCompleted, setSessionsCompleted] = useState(0)
-  const [currentSessionType, setCurrentSessionType] = useState<SessionType>('work')
-  const [customDuration, setCustomDuration] = useState<number | null>(null)
-  
+  const { settings, loading: settingsLoading } = useSettings()
+  const { playSound } = useAudio()
+
   // Timer state
-  const [timeRemaining, setTimeRemaining] = useState(1500) // 25 minutes default
-  const [isRunning, setIsRunning] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [totalTime, setTotalTime] = useState(1500)
+  const [state, setState] = useState<TimerState>({
+    mode: 'work',
+    timeRemaining: 1500, // 25 minutes default
+    isActive: false,
+    sessionsCompleted: 0,
+    isReversed: false,
+  })
 
-  const circleRef = useRef<SVGCircleElement>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  // const intervalRef = useRef<NodeJS.Timeout>()
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const startTimeRef = useRef<number | null>(null)
+  const hasCompletedRef = useRef(false)
 
-  // Calculate current duration based on session type
-  const getCurrentDuration = useCallback((): number => {
-    if (customDuration) return customDuration
-    
-    const preset = DEFAULT_PRESETS.find(p => p.id === selectedPreset)
-    if (!preset) return 1500
-
-    switch (currentSessionType) {
-      case 'work':
-        return preset.work
-      case 'short_break':
-        return preset.shortBreak
-      case 'long_break':
-        return preset.longBreak
-      default:
-        return preset.work
-    }
-  }, [selectedPreset, currentSessionType, customDuration])
-
-  // Update progress ring visual
-  const updateProgressRing = useCallback((remaining: number, total: number) => {
-    if (!circleRef.current) return
-    
-    const circle = circleRef.current
-    const radius = circle.r.baseVal.value
-    const circumference = 2 * Math.PI * radius
-    
-    let progress
-    if (reverseMode) {
-      // Reverse mode: fill up as time progresses
-      progress = (total - remaining) / total
-    } else {
-      // Normal mode: empty as time decreases
-      progress = remaining / total
-    }
-    
-    const strokeDashoffset = circumference - (progress * circumference)
-    circle.style.strokeDashoffset = strokeDashoffset.toString()
-  }, [reverseMode])
-
-  // Timer tick function
+  // Initialize timer with settings
   useEffect(() => {
-    if (isRunning && !isPaused && timeRemaining > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          const newTime = prev - 1
-          updateProgressRing(newTime, totalTime)
-          
-          if (newTime <= 0) {
-            handleSessionComplete()
-            return 0
-          }
-          
-          return newTime
+    if (settings && !state.isActive) {
+      setState(prev => ({
+        ...prev,
+        timeRemaining: settings.work_duration,
+      }))
+    }
+  }, [settings])
+
+  // Get duration for current mode
+  const getDuration = useCallback((mode: TimerMode): number => {
+    if (!settings) return mode === 'work' ? 1500 : mode === 'shortBreak' ? 300 : 1800
+    
+    switch (mode) {
+      case 'work':
+        return settings.work_duration
+      case 'shortBreak':
+        return settings.short_break_duration
+      case 'longBreak':
+        return settings.long_break_duration
+      default:
+        return 1500
+    }
+  }, [settings])
+
+  // Switch timer mode
+  const switchMode = useCallback((newMode: TimerMode, incrementSession: boolean = false) => {
+    setState(prev => ({
+      mode: newMode,
+      timeRemaining: getDuration(newMode),
+      isActive: false,
+      sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
+      isReversed: prev.isReversed, // Preserve reverse mode setting
+    }))
+    hasCompletedRef.current = false
+
+    // Auto-start if enabled
+    if (settings) {
+      const shouldAutoStart = 
+        (newMode !== 'work' && settings.auto_start_breaks) ||
+        (newMode === 'work' && settings.auto_start_pomodoros)
+      
+      if (shouldAutoStart) {
+        setTimeout(() => {
+          setState(prev => ({ ...prev, isActive: true }))
+        }, 1000)
+      }
+    }
+  }, [getDuration, settings])
+
+  // Handle timer completion
+  const handleTimerComplete = useCallback(() => {
+    if (hasCompletedRef.current) return
+    hasCompletedRef.current = true
+
+    const currentMode = state.mode
+    const currentSessions = state.sessionsCompleted
+
+    // Play completion sound
+    if (settings) {
+      const soundId = currentMode === 'work' 
+        ? settings.notification_sound 
+        : settings.break_sound
+      playSound(soundId, settings.notification_volume)
+    }
+
+    // Show notification based on current mode
+    if ('Notification' in window && Notification.permission === 'granted') {
+      if (currentMode === 'work') {
+        new Notification('Work Session Complete!', {
+          body: 'Great job! Time for a break.',
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-192x192.png',
         })
-      }, 1000)
+      } else {
+        new Notification('Break Complete!', {
+          body: 'Break is over. Ready to focus?',
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-192x192.png',
+        })
+      }
+    }
+
+    // Trigger callback only for work sessions
+    if (currentMode === 'work') {
+      onSessionComplete(`session-${Date.now()}`)
+    }
+
+    // Determine next mode
+    if (currentMode === 'work') {
+      const newSessionCount = currentSessions + 1
+      const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
+      
+      // Check if it's time for a long break
+      if (newSessionCount % sessionsUntilLongBreak === 0) {
+        switchMode('longBreak', true)
+      } else {
+        switchMode('shortBreak', true)
+      }
     } else {
+      // Break is over, return to work
+      switchMode('work', false)
+    }
+  }, [state.mode, state.sessionsCompleted, settings, playSound, onSessionComplete, switchMode])
+
+  // Timer tick
+  useEffect(() => {
+    if (!state.isActive) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
+      return
+    }
+
+    if (state.isReversed) {
+      // Reverse Pomodoro - count up from 0
+      startTimeRef.current = Date.now()
+      const startTime = Date.now()
+
+      intervalRef.current = setInterval(() => {
+        const now = Date.now()
+        const elapsed = Math.floor((now - startTime) / 1000)
+        setState(prev => ({ ...prev, timeRemaining: elapsed }))
+      }, 100)
+    } else {
+      // Normal Pomodoro - count down
+      startTimeRef.current = Date.now()
+      const targetTime = Date.now() + (state.timeRemaining * 1000)
+
+      intervalRef.current = setInterval(() => {
+        const now = Date.now()
+        const remaining = Math.ceil((targetTime - now) / 1000)
+
+        if (remaining <= 0) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+          setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
+          handleTimerComplete()
+        } else {
+          setState(prev => ({ ...prev, timeRemaining: remaining }))
+        }
+      }, 100)
     }
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
     }
-  }, [isRunning, isPaused, timeRemaining, totalTime, updateProgressRing])
+  }, [state.isActive, state.isReversed, handleTimerComplete])
 
-  // Handle session completion
-  const handleSessionComplete = async () => {
-    setIsRunning(false)
-    setIsPaused(false)
-    
-    const completedType = currentSessionType
-    
-    // Play completion sound (browser notification sound)
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(`${completedType === 'work' ? 'Work' : 'Break'} Session Complete!`, {
-        body: completedType === 'work' ? 'Great work! Time for a break.' : 'Break over! Ready to focus?',
-        icon: '/icons/icon-192x192.png',
-      })
-    }
-
-    // Update sessions completed count
-    if (completedType === 'work') {
-      setSessionsCompleted(prev => prev + 1)
-    }
-
-    // Determine next session type
-    let nextType: SessionType = 'work'
-    if (completedType === 'work') {
-      const shouldTakeLongBreak = (sessionsCompleted + 1) % 4 === 0 // Default to 4 sessions
-      nextType = shouldTakeLongBreak ? 'long_break' : 'short_break'
-    }
-
-    setCurrentSessionType(nextType)
-    
-    // Reset timer for next session
-    const nextDuration = getNextSessionDuration(nextType)
-    setTimeRemaining(nextDuration)
-    setTotalTime(nextDuration)
-    updateProgressRing(nextDuration, nextDuration)
-
-    // Call parent completion handler
-    if (currentSessionId) {
-      onSessionComplete(currentSessionId)
-    }
-
-    // TODO: Auto-start next session based on settings
+  // Toggle play/pause
+  const toggleTimer = () => {
+    setState(prev => ({ ...prev, isActive: !prev.isActive }))
   }
 
-  const getNextSessionDuration = (sessionType: SessionType): number => {
-    const preset = DEFAULT_PRESETS.find(p => p.id === selectedPreset) || DEFAULT_PRESETS[0]
-    switch (sessionType) {
-      case 'work': return preset.work
-      case 'short_break': return preset.shortBreak
-      case 'long_break': return preset.longBreak
-      default: return preset.work
-    }
+  // Toggle reverse mode
+  const toggleReverse = () => {
+    setState(prev => ({
+      ...prev,
+      isReversed: !prev.isReversed,
+      timeRemaining: prev.isReversed ? getDuration(prev.mode) : 0,
+      isActive: false,
+    }))
+    hasCompletedRef.current = false
   }
 
-  // Handle start/resume
-  const handleStart = async () => {
-    try {
-      if (!isRunning) {
-        // Starting new session
-        const duration = getCurrentDuration()
-        setTimeRemaining(duration)
-        setTotalTime(duration)
-        updateProgressRing(duration, duration)
-        
-        // TODO: Create session in database
-        const sessionId = `session-${Date.now()}` // Temporary ID
-        setCurrentSessionId(sessionId)
-      }
+  // Skip to next session
+  const skipSession = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    
+    // Don't trigger notifications or auto-transitions when skipping
+    setState(prev => ({ ...prev, isActive: false }))
+    
+    const currentMode = state.mode
+    const currentSessions = state.sessionsCompleted
+    
+    // Determine next mode without notifications
+    if (currentMode === 'work') {
+      const newSessionCount = currentSessions + 1
+      const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
       
-      setIsRunning(true)
-      setIsPaused(false)
-    } catch (error) {
-      console.error('Failed to start timer:', error)
+      // Check if it's time for a long break
+      if (newSessionCount % sessionsUntilLongBreak === 0) {
+        switchMode('longBreak', true)
+      } else {
+        switchMode('shortBreak', true)
+      }
+    } else {
+      // Break is over, return to work
+      switchMode('work', false)
     }
   }
 
-  // Handle pause
-  const handlePause = () => {
-    setIsPaused(true)
+  // Reset timer
+  const resetTimer = () => {
+    setState(prev => ({
+      ...prev,
+      timeRemaining: prev.isReversed ? 0 : getDuration(prev.mode),
+      isActive: false,
+    }))
+    hasCompletedRef.current = false
   }
 
-  // Handle resume
-  const handleResume = () => {
-    setIsPaused(false)
-  }
-
-  // Handle reset
-  const handleReset = () => {
-    setIsRunning(false)
-    setIsPaused(false)
-    setSessionsCompleted(0)
-    setCurrentSessionType('work')
-    setCurrentSessionId(null)
-    
-    const duration = getCurrentDuration()
-    setTimeRemaining(duration)
-    setTotalTime(duration)
-    updateProgressRing(duration, duration)
-  }
-
-  // Handle preset selection
-  const handlePresetSelect = (presetId: string) => {
-    if (isRunning) return // Don't change preset while timer is running
-    setSelectedPreset(presetId)
-    setCustomDuration(null)
-    
-    const duration = getCurrentDuration()
-    setTimeRemaining(duration)
-    setTotalTime(duration)
-    updateProgressRing(duration, duration)
-  }
-
-  // Handle custom duration input
-  const handleCustomDuration = (minutes: number) => {
-    if (isRunning) return
-    const seconds = minutes * 60
-    setCustomDuration(seconds)
-    setSelectedPreset('custom')
-    setTimeRemaining(seconds)
-    setTotalTime(seconds)
-    updateProgressRing(seconds, seconds)
+  // Reset all (including session count)
+  const resetAll = () => {
+    setState({
+      mode: 'work',
+      timeRemaining: getDuration('work'),
+      isActive: false,
+      sessionsCompleted: 0,
+      isReversed: false,
+    })
+    hasCompletedRef.current = false
   }
 
   // Format time display
-  const formatTime = useCallback((seconds: number): string => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }, [])
+  }
 
-  // Initialize progress ring on mount
-  useEffect(() => {
-    const duration = getCurrentDuration()
-    setTimeRemaining(duration)
-    setTotalTime(duration)
-    updateProgressRing(duration, duration)
-  }, [getCurrentDuration, updateProgressRing])
-
-  // Request notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
+  // Calculate progress percentage
+  const getProgress = (): number => {
+    if (state.isReversed) {
+      // In reverse mode, progress is always 0 since we're just counting up
+      return 0
     }
-  }, [])
+    const total = getDuration(state.mode)
+    return ((total - state.timeRemaining) / total) * 100
+  }
 
-  const currentPreset = DEFAULT_PRESETS.find(p => p.id === selectedPreset) || DEFAULT_PRESETS[0]
-  const displayTime = reverseMode ? (totalTime - timeRemaining) : timeRemaining
+  // Get mode display info
+  const getModeInfo = () => {
+    switch (state.mode) {
+      case 'work':
+        return {
+          title: 'Focus Time',
+          icon: <Zap className="w-6 h-6" />,
+          color: 'text-blue-500',
+          bgColor: 'bg-blue-500',
+        }
+      case 'shortBreak':
+        return {
+          title: 'Short Break',
+          icon: <Coffee className="w-6 h-6" />,
+          color: 'text-green-500',
+          bgColor: 'bg-green-500',
+        }
+      case 'longBreak':
+        return {
+          title: 'Long Break',
+          icon: <Coffee className="w-6 h-6" />,
+          color: 'text-purple-500',
+          bgColor: 'bg-purple-500',
+        }
+    }
+  }
 
-  // Session type labels
-  const sessionTypeLabels: Record<SessionType, string> = {
-    work: 'Focus Time',
-    short_break: 'Short Break',
-    long_break: 'Long Break',
+  const modeInfo = getModeInfo()
+  const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
+  const currentCyclePosition = state.sessionsCompleted % sessionsUntilLongBreak
+
+  if (settingsLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col items-center space-y-8 p-6">
-      {/* Session Type Indicator */}
+    <div className="space-y-8">
+      {/* Mode Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          {sessionTypeLabels[currentSessionType]}
-        </h2>
-        <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-          <span>Session {sessionsCompleted + 1}</span>
-          <span>•</span>
-          <span>{currentPreset.name} Mode</span>
-          {reverseMode && (
-            <>
-              <span>•</span>
-              <span className="text-blue-500">Reverse</span>
-            </>
+        <div className={`inline-flex items-center space-x-2 ${modeInfo.color} mb-2`}>
+          {modeInfo.icon}
+          <h2 className="text-2xl font-bold">{modeInfo.title}</h2>
+        </div>
+        <div className="flex items-center justify-center space-x-2">
+          {selectedTaskId && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Working on selected task
+            </p>
+          )}
+          {state.isReversed && (
+            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 rounded-full">
+              Reverse Mode
+            </span>
           )}
         </div>
       </div>
 
       {/* Timer Display */}
       <div className="relative">
-        <svg className="transform -rotate-90 w-64 h-64" viewBox="0 0 256 256">
-          {/* Background ring */}
-          <circle
-            cx="128"
-            cy="128"
-            r="112"
-            fill="transparent"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-gray-200 dark:text-gray-700"
-          />
-          {/* Progress ring */}
-          <circle
-            ref={circleRef}
-            cx="128"
-            cy="128"
-            r="112"
-            fill="transparent"
-            stroke="currentColor"
-            strokeWidth="8"
-            strokeLinecap="round"
-            className={`${currentPreset.color.replace('bg-', 'text-')} transition-all duration-300`}
-            style={{
-              strokeDasharray: 2 * Math.PI * 112,
-              strokeDashoffset: 2 * Math.PI * 112,
-            }}
-          />
-        </svg>
-        
-        {/* Time display */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-5xl font-mono font-bold text-gray-900 dark:text-white">
-            {formatTime(displayTime)}
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            {reverseMode ? 'Elapsed' : 'Remaining'}
+        {/* Circular Progress */}
+        <div className="relative w-72 h-72 mx-auto">
+          <svg className="w-full h-full transform -rotate-90">
+            {/* Background circle */}
+            <circle
+              cx="144"
+              cy="144"
+              r="136"
+              stroke="currentColor"
+              strokeWidth="8"
+              fill="none"
+              className="text-gray-200 dark:text-gray-700"
+            />
+            {/* Progress circle */}
+            <circle
+              cx="144"
+              cy="144"
+              r="136"
+              stroke="currentColor"
+              strokeWidth="8"
+              fill="none"
+              strokeLinecap="round"
+              className={state.isReversed ? 'text-purple-500' : modeInfo.color}
+              style={{
+                strokeDasharray: `${2 * Math.PI * 136}`,
+                strokeDashoffset: `${2 * Math.PI * 136 * (1 - getProgress() / 100)}`,
+                transition: 'stroke-dashoffset 0.5s ease',
+              }}
+            />
+          </svg>
+
+          {/* Time Display */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-6xl font-bold text-gray-900 dark:text-white tabular-nums">
+                {formatTime(state.timeRemaining)}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {state.isReversed 
+                  ? (state.isActive ? 'Counting Up...' : 'Paused') 
+                  : (state.isActive ? 'In Progress' : 'Paused')
+                }
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Timer Controls */}
-      <div className="flex items-center space-x-4">
-        {!isRunning || isPaused ? (
+      {/* Controls */}
+      <div className="flex items-center justify-center space-x-4">
+        <button
+          onClick={toggleTimer}
+          className={`
+            p-6 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95
+            ${state.isActive 
+              ? 'bg-red-500 hover:bg-red-600 text-white' 
+              : state.isReversed
+                ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                : `${modeInfo.bgColor} hover:opacity-90 text-white`
+            }
+          `}
+          aria-label={state.isActive ? 'Pause timer' : 'Start timer'}
+        >
+          {state.isActive ? (
+            <Pause className="w-8 h-8" />
+          ) : (
+            <Play className="w-8 h-8 ml-1" />
+          )}
+        </button>
+
+        {!state.isReversed && (
           <button
-            onClick={isPaused ? handleResume : handleStart}
-            className={`p-4 rounded-full ${currentPreset.color} text-white hover:opacity-90 transition-all duration-200 shadow-lg`}
-            aria-label={isPaused ? 'Resume timer' : 'Start timer'}
+            onClick={skipSession}
+            className="p-4 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition-colors"
+            aria-label="Skip to next session"
+            title="Skip to next session"
           >
-            <Play className="w-6 h-6" />
-          </button>
-        ) : (
-          <button
-            onClick={handlePause}
-            className="p-4 rounded-full bg-yellow-500 text-white hover:opacity-90 transition-all duration-200 shadow-lg"
-            aria-label="Pause timer"
-          >
-            <Pause className="w-6 h-6" />
+            <SkipForward className="w-6 h-6" />
           </button>
         )}
 
         <button
-          onClick={handleReset}
-          className="p-4 rounded-full bg-gray-500 text-white hover:opacity-90 transition-all duration-200 shadow-lg"
+          onClick={resetTimer}
+          className="p-4 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors"
           aria-label="Reset timer"
+          title="Reset current timer"
         >
-          <Square className="w-6 h-6" />
+          <RotateCcw className="w-6 h-6" />
         </button>
 
         <button
           onClick={onOpenSettings}
-          className="p-4 rounded-full bg-blue-500 text-white hover:opacity-90 transition-all duration-200 shadow-lg"
+          className="p-4 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors"
           aria-label="Open settings"
+          title="Timer settings"
         >
           <Settings className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Mode Toggle */}
-      <div className="flex items-center space-x-4">
+      {/* Reverse Mode Toggle */}
+      <div className="flex items-center justify-center">
         <button
-          onClick={() => setReverseMode(!reverseMode)}
-          disabled={isRunning}
-          className={`px-4 py-2 rounded-lg border ${
-            reverseMode 
-              ? 'bg-blue-500 text-white border-blue-500' 
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700'
-          } disabled:opacity-50 transition-all duration-200`}
+          onClick={toggleReverse}
+          disabled={state.isActive}
+          className={`
+            flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+            ${state.isActive 
+              ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700 text-gray-400' 
+              : state.isReversed
+                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }
+          `}
+          title={state.isActive ? 'Stop timer to change mode' : 'Toggle reverse pomodoro mode'}
         >
-          <RotateCcw className="w-4 h-4 inline mr-2" />
-          Reverse Mode
+          <span>🔄</span>
+          <span>{state.isReversed ? 'Disable' : 'Enable'} Reverse Mode</span>
         </button>
       </div>
 
-      {/* Timer Presets */}
-      <div className="w-full max-w-md">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Quick Presets
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {DEFAULT_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => handlePresetSelect(preset.id)}
-              disabled={isRunning}
-              className={`p-3 rounded-lg border text-left transition-all duration-200 ${
-                selectedPreset === preset.id
-                  ? `${preset.color} text-white border-transparent`
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:border-gray-500'
-              } disabled:opacity-50`}
-            >
-              <div className="font-medium">{preset.name}</div>
-              <div className="text-sm opacity-75">
-                {Math.round(preset.work / 60)}m work
-              </div>
-            </button>
+      {/* Session Progress */}
+      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Session Progress
+          </span>
+          <button
+            onClick={resetAll}
+            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Reset all sessions"
+          >
+            Reset All
+          </button>
+        </div>
+
+        {/* Progress Dots */}
+        <div className="flex items-center justify-center space-x-3">
+          {Array.from({ length: sessionsUntilLongBreak }).map((_, index) => (
+            <div
+              key={index}
+              className={`
+                w-4 h-4 rounded-full transition-all
+                ${index < currentCyclePosition
+                  ? `${modeInfo.bgColor} shadow-md scale-110`
+                  : 'bg-gray-300 dark:bg-gray-600'
+                }
+              `}
+              title={`Session ${index + 1}`}
+            />
           ))}
         </div>
+
+        <div className="text-center mt-3 text-sm text-gray-600 dark:text-gray-400">
+          {currentCyclePosition === 0 && state.sessionsCompleted > 0
+            ? `Completed ${Math.floor(state.sessionsCompleted / sessionsUntilLongBreak)} full cycle${Math.floor(state.sessionsCompleted / sessionsUntilLongBreak) !== 1 ? 's' : ''}!`
+            : `${currentCyclePosition} of ${sessionsUntilLongBreak} sessions completed`
+          }
+        </div>
+
+        {/* Total sessions counter */}
+        <div className="text-center mt-2 text-xs text-gray-500 dark:text-gray-500">
+          Total work sessions: {state.sessionsCompleted}
+        </div>
       </div>
 
-      {/* Custom Duration Input */}
-      <div className="w-full max-w-md">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Custom Duration (minutes)
-        </label>
-        <input
-          type="number"
-          min="1"
-          max="120"
-          placeholder="25"
-          disabled={isRunning}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-          onChange={(e) => {
-            const value = parseInt(e.target.value)
-            if (value > 0) handleCustomDuration(value)
-          }}
-        />
-      </div>
-
-      {/* Session Progress */}
-      <div className="w-full max-w-md">
-        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-          <span>Progress to Long Break</span>
-          <span>{sessionsCompleted} / 4 sessions</span>
-        </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-          <div
-            className={`${currentPreset.color} h-2 rounded-full transition-all duration-300`}
-            style={{
-              width: `${Math.min(100, (sessionsCompleted / 4) * 100)}%`
-            }}
-          />
-        </div>
+      {/* Quick Mode Switch */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => switchMode('work', false)}
+          disabled={state.mode === 'work'}
+          className={`
+            p-3 rounded-lg text-sm font-medium transition-colors
+            ${state.mode === 'work'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }
+          `}
+        >
+          Work
+        </button>
+        <button
+          onClick={() => switchMode('shortBreak', false)}
+          disabled={state.mode === 'shortBreak'}
+          className={`
+            p-3 rounded-lg text-sm font-medium transition-colors
+            ${state.mode === 'shortBreak'
+              ? 'bg-green-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }
+          `}
+        >
+          Short Break
+        </button>
+        <button
+          onClick={() => switchMode('longBreak', false)}
+          disabled={state.mode === 'longBreak'}
+          className={`
+            p-3 rounded-lg text-sm font-medium transition-colors
+            ${state.mode === 'longBreak'
+              ? 'bg-purple-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }
+          `}
+        >
+          Long Break
+        </button>
       </div>
     </div>
   )

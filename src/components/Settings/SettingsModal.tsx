@@ -37,11 +37,11 @@ const THEMES = [
 ];
 
 const SOUND_OPTIONS = [
-  { id: 'bell', name: 'Bell', file: '/sounds/bell.mp3' },
-  { id: 'chime', name: 'Chime', file: '/sounds/chime.mp3' },
-  { id: 'ding', name: 'Ding', file: '/sounds/ding.mp3' },
-  { id: 'gong', name: 'Gong', file: '/sounds/gong.mp3' },
-  { id: 'whistle', name: 'Whistle', file: '/sounds/whistle.mp3' },
+  { id: 'bell', name: 'Bell', file: '/audio/sounds/bell.wav' },
+  { id: 'chime', name: 'Chime', file: '/audio/sounds/chime.wav' },
+  { id: 'ding', name: 'Ding', file: '/audio/sounds/ding.mp3' },
+  { id: 'gong', name: 'Gong', file: '/audio/sounds/gong.mp3' },
+  { id: 'message', name: 'Message Notification', file: '/audio/sounds/message-notif.mp3' },
   { id: 'none', name: 'Silent', file: null },
 ];
 
@@ -426,7 +426,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Work Complete Sound
+                        Session Complete Sound
                       </label>
                       <div className="space-y-2">
                         {SOUND_OPTIONS.map(sound => (
@@ -675,6 +675,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {[
+                        { id: 'deep', name: 'Deep Focus', icon: '🎧' },
                         { id: 'rain', name: 'Rain', icon: '🌧️' },
                         { id: 'forest', name: 'Forest', icon: '🌲' },
                         { id: 'ocean', name: 'Ocean Waves', icon: '🌊' },

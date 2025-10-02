@@ -11,18 +11,19 @@ interface AudioClip {
 }
 
 const DEFAULT_SOUNDS: AudioClip[] = [
-  { id: 'bell', name: 'Bell', url: '/audio/sounds/bell.mp3' },
-  { id: 'chime', name: 'Chime', url: '/audio/sounds/chime.mp3' },
+  { id: 'bell', name: 'Bell', url: '/audio/sounds/bell.wav' },
+  { id: 'chime', name: 'Chime', url: '/audio/sounds/chime.wav' },
   { id: 'ding', name: 'Ding', url: '/audio/sounds/ding.mp3' },
   { id: 'gong', name: 'Gong', url: '/audio/sounds/gong.mp3' },
-  { id: 'whistle', name: 'Whistle', url: '/audio/sounds/whistle.mp3' },
+  { id: 'message', name: 'Message Notification', url: '/audio/sounds/message-notif.mp3' },
 ]
 
 const AMBIENT_SOUNDS: AudioClip[] = [
-  { id: 'rain', name: 'Rain', url: '/audio/ambient/rain.mp3' },
+  { id: 'deep', name: 'Deep Focus', url: '/audio/deep-focus/deep-focus.mp3' },
+  { id: 'rain', name: 'Rain', url: '/audio/ambient/rain.wav' },
   { id: 'forest', name: 'Forest', url: '/audio/ambient/forest.mp3' },
-  { id: 'ocean', name: 'Ocean Waves', url: '/audio/ambient/ocean.mp3' },
-  { id: 'coffee', name: 'Coffee Shop', url: '/audio/ambient/coffee.mp3' },
+  { id: 'ocean', name: 'Ocean Waves', url: '/audio/ambient/ocean-waves.mp3' },
+  { id: 'coffee', name: 'Coffee Shop', url: '/audio/ambient/cafe.mp3' },
   { id: 'fire', name: 'Fireplace', url: '/audio/ambient/fire.mp3' },
   { id: 'white', name: 'White Noise', url: '/audio/ambient/white-noise.mp3' },
 ]
