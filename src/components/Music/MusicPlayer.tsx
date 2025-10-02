@@ -72,6 +72,34 @@ export default function MusicPlayer({
       duration: 240,
       url: '/audio/ambient/forest.mp3',
     },
+    {
+      id: 'ocean1',
+      name: 'Ocean Waves',
+      artist: 'Nature Sounds',
+      duration: 300,
+      url: '/audio/ambient/ocean-waves.mp3',
+    },
+    {
+      id: 'rain1',
+      name: 'Rainfall',
+      artist: 'Nature Sounds',
+      duration: 200,
+      url: '/audio/ambient/rain.wav',
+    },
+    {
+      id: 'cafe1',
+      name: 'Cafe',
+      artist: 'Cafe Ambience',
+      duration: 200,
+      url: '/audio/ambient/cafe.mp3',
+    },
+    {
+      id: 'whitenoise1',
+      name: 'White Noise',
+      artist: 'White Noise',
+      duration: 200,
+      url: '/audio/ambient/white-noise.mp3',
+    },
     // Add more fallback tracks
   ]);
 
@@ -156,45 +184,58 @@ export default function MusicPlayer({
     }
   }, [isFallbackMode, localPlayback.isPlaying, play, pause]);
 
-  // Handle next track
-  const handleNext = useCallback(async () => {
-    if (isFallbackMode) {
-      const nextIndex = (currentFallbackIndex + 1) % fallbackTracks.length;
-      setCurrentFallbackIndex(nextIndex);
-      setLocalPlayback(prev => ({ 
-        ...prev, 
-        track: fallbackTracks[nextIndex],
-        position: 0 
-      }));
+// Handle next track
+const handleNext = useCallback(() => {
+  if (isFallbackMode) {
+    let nextIndex;
+    if (localPlayback.shuffle) {
+      // pick random different index
+      do {
+        nextIndex = Math.floor(Math.random() * fallbackTracks.length);
+      } while (nextIndex === currentFallbackIndex && fallbackTracks.length > 1);
     } else {
-      try {
-        await next();
-      } catch (error) {
-        console.error('Failed to skip track:', error);
-      }
+      // wrap around to 0
+      nextIndex = (currentFallbackIndex + 1) % fallbackTracks.length;
     }
-  }, [isFallbackMode, currentFallbackIndex, fallbackTracks, next]);
 
-  // Handle previous track
-  const handlePrevious = useCallback(async () => {
-    if (isFallbackMode) {
-      const prevIndex = currentFallbackIndex === 0 
-        ? fallbackTracks.length - 1 
-        : currentFallbackIndex - 1;
-      setCurrentFallbackIndex(prevIndex);
-      setLocalPlayback(prev => ({ 
-        ...prev, 
-        track: fallbackTracks[prevIndex],
-        position: 0 
-      }));
-    } else {
-      try {
-        await previous();
-      } catch (error) {
-        console.error('Failed to go to previous track:', error);
-      }
+    setCurrentFallbackIndex(nextIndex);
+    setLocalPlayback((prev) => ({
+      ...prev,
+      track: fallbackTracks[nextIndex],
+      position: 0,
+      isPlaying: true, // 👈 keep playing
+    }));
+  } else {
+    try {
+      next(); // spotify sdk
+    } catch (error) {
+      console.error("Failed to skip track:", error);
     }
-  }, [isFallbackMode, currentFallbackIndex, fallbackTracks, previous]);
+  }
+}, [isFallbackMode, currentFallbackIndex, fallbackTracks, next, localPlayback.shuffle]);
+
+// Handle previous track
+const handlePrevious = useCallback(async () => {
+  if (isFallbackMode) {
+    const prevIndex = currentFallbackIndex === 0 
+      ? fallbackTracks.length - 1 
+      : currentFallbackIndex - 1;
+
+    setCurrentFallbackIndex(prevIndex);
+    setLocalPlayback(prev => ({ 
+      ...prev, 
+      track: fallbackTracks[prevIndex],
+      position: 0,
+      isPlaying: prev.isPlaying,   // 👈 preserve play/pause state
+    }));
+  } else {
+    try {
+      await previous();
+    } catch (error) {
+      console.error('Failed to go to previous track:', error);
+    }
+  }
+}, [isFallbackMode, currentFallbackIndex, fallbackTracks, previous]);
 
   // Handle volume change
   const handleVolumeChange = useCallback(async (newVolume: number) => {
@@ -337,12 +378,33 @@ export default function MusicPlayer({
               
               {/* Progress Bar */}
               <div className="mt-2">
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
-                  <div
-                    className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={localPlayback.duration}
+                  value={localPlayback.position}
+                  step={1000} // step 1 second (1000 ms)
+                  onChange={(e) => {
+                    // Update position while dragging/clicking
+                    setLocalPlayback((prev) => ({
+                      ...prev,
+                      position: Number(e.target.value),
+                    }));
+                  }}
+                  onMouseUp={(e) => {
+                    // Seek audio when mouse released
+                    if (audioRef.current) {
+                      audioRef.current.currentTime = Number(e.currentTarget.value) / 1000;
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    // Seek audio when touch released
+                    if (audioRef.current) {
+                      audioRef.current.currentTime = Number(e.currentTarget.value) / 1000;
+                    }
+                  }}
+                  className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>{formatTime(Math.floor(localPlayback.position / 1000))}</span>
                   <span>{formatTime(Math.floor(localPlayback.duration / 1000))}</span>
@@ -451,33 +513,39 @@ export default function MusicPlayer({
       )}
 
       {/* Fallback Audio Element */}
-      {isFallbackMode && currentTrack?.url && (
-        <audio
-          ref={audioRef}
-          src={currentTrack.url}
-          onTimeUpdate={(e) => {
-            const audio = e.currentTarget;
-            setLocalPlayback(prev => ({
-              ...prev,
-              position: audio.currentTime * 1000,
-              duration: audio.duration * 1000,
-            }));
-          }}
-          onEnded={() => {
-            setLocalPlayback(prev => ({ ...prev, isPlaying: false }));
-            if (localPlayback.repeat === 'track') {
-              // Replay current track
-              audioRef.current?.play();
-            } else {
-              // Move to next track
-              handleNext();
-            }
-          }}
-          onPlay={() => setLocalPlayback(prev => ({ ...prev, isPlaying: true }))}
-          onPause={() => setLocalPlayback(prev => ({ ...prev, isPlaying: false }))}
-          loop={localPlayback.repeat === 'track'}
-        />
-      )}
+{isFallbackMode && currentTrack?.url && (
+<audio
+  key={`${currentTrack.url}-${localPlayback.repeat}`} 
+  ref={audioRef}
+  src={currentTrack.url}
+  preload="auto"
+  autoPlay={localPlayback.isPlaying} // only play if state says "playing"
+  onTimeUpdate={(e) => {
+    const audio = e.currentTarget;
+    setLocalPlayback((prev) => ({
+      ...prev,
+      position: audio.currentTime * 1000,
+      duration: audio.duration * 1000,
+    }));
+  }}
+  onEnded={() => {
+    if (localPlayback.repeat === "track") {
+      // browser handles looping, but ensure play state stays true
+      audioRef.current?.play();
+    } else if (localPlayback.repeat === "context") {
+      // go to next track, wrapping around if needed
+      handleNext();
+    } else {
+      // repeat === "off"
+      setLocalPlayback((prev) => ({ ...prev, isPlaying: false }));
+    }
+  }}
+  onPlay={() => setLocalPlayback((prev) => ({ ...prev, isPlaying: true }))}
+  onPause={() => setLocalPlayback((prev) => ({ ...prev, isPlaying: false }))}
+  loop={localPlayback.repeat === "track"} // native repeat
+/>
+)}
+
 
       {/* No Connection State */}
       {!isConnected && !isFallbackMode && (
