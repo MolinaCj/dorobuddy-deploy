@@ -32,8 +32,11 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   // Increment settings version when settings change
   useEffect(() => {
     if (settings) {
-      setSettingsVersion(prev => prev + 1)
-      console.log('Settings version incremented to:', settingsVersion + 1)
+      setSettingsVersion(prev => {
+        const newVersion = prev + 1
+        console.log('Settings version incremented to:', newVersion)
+        return newVersion
+      })
     }
   }, [settings?.work_duration, settings?.short_break_duration, settings?.long_break_duration])
 
@@ -96,29 +99,34 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
         isReversed: state.isReversed
       })
       
-      setState(prev => {
-        // Always update when settings change, but preserve active state
-        const newDuration = (() => {
-          switch (prev.mode) {
-            case 'work':
-              return settings.work_duration
-            case 'shortBreak':
-              return settings.short_break_duration
-            case 'longBreak':
-              return settings.long_break_duration
-            default:
-              return settings.work_duration
+      // Use a timeout to ensure the state update happens after the current render cycle
+      const timeoutId = setTimeout(() => {
+        setState(prev => {
+          // Always update when settings change, but preserve active state
+          const newDuration = (() => {
+            switch (prev.mode) {
+              case 'work':
+                return settings.work_duration
+              case 'shortBreak':
+                return settings.short_break_duration
+              case 'longBreak':
+                return settings.long_break_duration
+              default:
+                return settings.work_duration
+            }
+          })()
+          
+          console.log('Updating timer with new duration:', newDuration, 'for mode:', prev.mode, 'isReversed:', prev.isReversed)
+          
+          // Always update the time remaining when settings change
+          return {
+            ...prev,
+            timeRemaining: prev.isReversed ? 0 : newDuration,
           }
-        })()
-        
-        console.log('Updating timer with new duration:', newDuration, 'for mode:', prev.mode, 'isReversed:', prev.isReversed)
-        
-        // Always update the time remaining when settings change
-        return {
-          ...prev,
-          timeRemaining: prev.isReversed ? 0 : newDuration,
-        }
-      })
+        })
+      }, 0)
+      
+      return () => clearTimeout(timeoutId)
     }
   }, [settings?.work_duration, settings?.short_break_duration, settings?.long_break_duration, settingsVersion])
 
@@ -147,6 +155,40 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
       })
     }
   }, [state.isActive, settings])
+
+  // Force refresh timer with current settings
+  const forceRefreshTimer = useCallback(() => {
+    if (settings) {
+      console.log('Force refreshing timer with current settings')
+      setState(prev => {
+        const newDuration = (() => {
+          switch (prev.mode) {
+            case 'work':
+              return settings.work_duration
+            case 'shortBreak':
+              return settings.short_break_duration
+            case 'longBreak':
+              return settings.long_break_duration
+            default:
+              return settings.work_duration
+          }
+        })()
+        
+        console.log('Force refresh - new duration:', newDuration, 'for mode:', prev.mode, 'isReversed:', prev.isReversed)
+        
+        return {
+          ...prev,
+          timeRemaining: prev.isReversed ? 0 : newDuration,
+        }
+      })
+    }
+  }, [settings])
+
+  // Add a manual refresh button for testing
+  const handleManualRefresh = () => {
+    console.log('Manual refresh triggered')
+    forceRefreshTimer()
+  }
 
   // Switch timer mode
 const switchMode = useCallback(
@@ -291,12 +333,13 @@ const switchMode = useCallback(
   const toggleReverse = () => {
     setState(prev => {
       const newDuration = getDuration(prev.mode)
-      console.log('Toggle reverse - current mode:', prev.mode, 'new duration:', newDuration, 'isReversed:', prev.isReversed)
+      const newIsReversed = !prev.isReversed
+      console.log('Toggle reverse - current mode:', prev.mode, 'new duration:', newDuration, 'current isReversed:', prev.isReversed, 'new isReversed:', newIsReversed)
       
       return {
         ...prev,
-        isReversed: !prev.isReversed,
-        timeRemaining: prev.isReversed ? newDuration : 0,
+        isReversed: newIsReversed,
+        timeRemaining: newIsReversed ? 0 : newDuration,
         isActive: false,
       }
     })
@@ -532,6 +575,16 @@ const switchMode = useCallback(
           title="Timer settings"
         >
           <Settings className="w-6 h-6" />
+        </button>
+
+        {/* Manual refresh button for testing */}
+        <button
+          onClick={handleManualRefresh}
+          className="p-4 rounded-full bg-blue-200 dark:bg-blue-700 hover:bg-blue-300 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-300 transition-colors"
+          aria-label="Refresh timer"
+          title="Refresh timer with current settings"
+        >
+          🔄
         </button>
       </div>
 
