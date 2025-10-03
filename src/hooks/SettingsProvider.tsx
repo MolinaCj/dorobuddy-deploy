@@ -86,6 +86,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     fetchSettings()
   }, [user])
 
+  // Apply theme to document when settings.theme changes
+  useEffect(() => {
+    if (!settings) return
+    const root = document.documentElement
+    const themeId = settings.theme || 'default'
+    // Toggle Tailwind dark mode for components using `dark:` variants
+    root.classList.toggle('dark', themeId === 'dark')
+    // Expose theme identifier for CSS variables-based theming
+    root.setAttribute('data-theme', themeId)
+  }, [settings?.theme])
+
   const value: SettingsContextType = {
     settings,
     loading,
