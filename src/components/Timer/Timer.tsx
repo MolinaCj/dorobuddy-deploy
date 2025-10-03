@@ -39,7 +39,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const startTimeRef = useRef<number | null>(null)
   const hasCompletedRef = useRef(false)
 
-  // Initialize timer with settings
+  //Initialize timer with settings
   useEffect(() => {
     if (settings && !state.isActive) {
       setState(prev => ({
@@ -66,29 +66,33 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   }, [settings])
 
   // Switch timer mode
-  const switchMode = useCallback((newMode: TimerMode, incrementSession: boolean = false) => {
+const switchMode = useCallback(
+  (newMode: TimerMode, incrementSession: boolean = false) => {
     setState(prev => ({
+      ...prev,
       mode: newMode,
-      timeRemaining: getDuration(newMode),
+      timeRemaining: getDuration(newMode), // now always fresh
       isActive: false,
       sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
-      isReversed: prev.isReversed, // Preserve reverse mode setting
+      // don’t overwrite reverse here — just keep it as is
     }))
     hasCompletedRef.current = false
 
-    // Auto-start if enabled
     if (settings) {
-      const shouldAutoStart = 
+      const shouldAutoStart =
         (newMode !== 'work' && settings.auto_start_breaks) ||
         (newMode === 'work' && settings.auto_start_pomodoros)
-      
+
       if (shouldAutoStart) {
         setTimeout(() => {
           setState(prev => ({ ...prev, isActive: true }))
         }, 1000)
       }
     }
-  }, [getDuration, settings])
+  },
+  [settings] // depends on settings only
+)
+
 
   // Handle timer completion
   const handleTimerComplete = useCallback(() => {
