@@ -95,7 +95,9 @@ const handleSubmit = async (e: React.FormEvent) => {
       long_break_duration: formData.long_break_duration ?? 900,   // 15m default
     };
 
-    await updateSettings(safeData);
+    console.log('Updating settings with data:', safeData);
+    const updatedSettings = await updateSettings(safeData);
+    console.log('Settings updated successfully:', updatedSettings);
     setHasChanges(false);
     onClose();
   } catch (error) {

@@ -41,45 +41,110 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
 
   // Get duration for current mode
   const getDuration = useCallback((mode: TimerMode): number => {
-    if (!settings) return mode === 'work' ? 1500 : mode === 'shortBreak' ? 300 : 1800
+    if (!settings) {
+      const defaultDuration = mode === 'work' ? 1500 : mode === 'shortBreak' ? 300 : 1800
+      console.log('getDuration - no settings, using default:', defaultDuration, 'for mode:', mode)
+      return defaultDuration
+    }
     
+    let duration: number
     switch (mode) {
       case 'work':
-        return settings.work_duration
+        duration = settings.work_duration
+        break
       case 'shortBreak':
-        return settings.short_break_duration
+        duration = settings.short_break_duration
+        break
       case 'longBreak':
-        return settings.long_break_duration
+        duration = settings.long_break_duration
+        break
       default:
-        return 1500
+        duration = 1500
     }
+    
+    console.log('getDuration - settings available:', {
+      mode,
+      duration,
+      work_duration: settings.work_duration,
+      short_break_duration: settings.short_break_duration,
+      long_break_duration: settings.long_break_duration
+    })
+    
+    return duration
   }, [settings])
 
   //Initialize timer with settings and update when settings change
   useEffect(() => {
     if (settings) {
+      console.log('Settings changed in Timer:', {
+        work_duration: settings.work_duration,
+        short_break_duration: settings.short_break_duration,
+        long_break_duration: settings.long_break_duration,
+        currentMode: state.mode,
+        isActive: state.isActive,
+        isReversed: state.isReversed
+      })
+      
       setState(prev => {
-        // Only update if timer is not active to avoid interrupting running timer
+        // Always update when settings change, but preserve active state
+        const newDuration = (() => {
+          switch (prev.mode) {
+            case 'work':
+              return settings.work_duration
+            case 'shortBreak':
+              return settings.short_break_duration
+            case 'longBreak':
+              return settings.long_break_duration
+            default:
+              return settings.work_duration
+          }
+        })()
+        
+        console.log('Updating timer with new duration:', newDuration, 'for mode:', prev.mode, 'isReversed:', prev.isReversed)
+        
+        // If timer is not active, update the time remaining
         if (!prev.isActive) {
           return {
             ...prev,
-            timeRemaining: prev.isReversed ? 0 : getDuration(prev.mode),
+            timeRemaining: prev.isReversed ? 0 : newDuration,
           }
         }
-        return prev
+        
+        // If timer is active, we still need to update the duration for when it stops
+        // This ensures reverse mode gets the correct duration when toggled
+        return {
+          ...prev,
+          // Keep current time but update the mode's duration reference
+        }
       })
     }
-  }, [settings, getDuration])
+  }, [settings])
+
 
   // Reset timer when settings change to apply new durations
   const resetTimerToCurrentSettings = useCallback(() => {
-    if (!state.isActive) {
-      setState(prev => ({
-        ...prev,
-        timeRemaining: prev.isReversed ? 0 : getDuration(prev.mode),
-      }))
+    if (!state.isActive && settings) {
+      setState(prev => {
+        const newDuration = (() => {
+          switch (prev.mode) {
+            case 'work':
+              return settings.work_duration
+            case 'shortBreak':
+              return settings.short_break_duration
+            case 'longBreak':
+              return settings.long_break_duration
+            default:
+              return settings.work_duration
+          }
+        })()
+        
+        return {
+          ...prev,
+          timeRemaining: prev.isReversed ? 0 : newDuration,
+        }
+      })
     }
-  }, [state.isActive, getDuration])
+  }, [state.isActive, settings])
 
   // Switch timer mode
 const switchMode = useCallback(
@@ -222,12 +287,17 @@ const switchMode = useCallback(
 
   // Toggle reverse mode
   const toggleReverse = () => {
-    setState(prev => ({
-      ...prev,
-      isReversed: !prev.isReversed,
-      timeRemaining: prev.isReversed ? getDuration(prev.mode) : 0,
-      isActive: false,
-    }))
+    setState(prev => {
+      const newDuration = getDuration(prev.mode)
+      console.log('Toggle reverse - current mode:', prev.mode, 'new duration:', newDuration, 'isReversed:', prev.isReversed)
+      
+      return {
+        ...prev,
+        isReversed: !prev.isReversed,
+        timeRemaining: prev.isReversed ? newDuration : 0,
+        isActive: false,
+      }
+    })
     hasCompletedRef.current = false
   }
 

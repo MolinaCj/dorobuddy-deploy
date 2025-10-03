@@ -55,6 +55,7 @@ export function useSettings() {
       }
 
       const updatedSettings = await response.json()
+      console.log('Settings updated in useSettings hook:', updatedSettings)
       setSettings(updatedSettings)
       return updatedSettings
     } catch (err) {
