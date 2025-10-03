@@ -56,7 +56,9 @@ export function useSettings() {
 
       const updatedSettings = await response.json()
       console.log('Settings updated in useSettings hook:', updatedSettings)
-      setSettings(updatedSettings)
+      
+      // Force a new object reference to ensure React detects the change
+      setSettings({ ...updatedSettings })
       return updatedSettings
     } catch (err) {
       throw err

@@ -25,6 +25,17 @@ interface TimerState {
 export default function Timer({ selectedTaskId, onSessionComplete, onOpenSettings }: TimerProps) {
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound } = useAudio()
+  
+  // Track settings changes to force updates
+  const [settingsVersion, setSettingsVersion] = useState(0)
+
+  // Increment settings version when settings change
+  useEffect(() => {
+    if (settings) {
+      setSettingsVersion(prev => prev + 1)
+      console.log('Settings version incremented to:', settingsVersion + 1)
+    }
+  }, [settings?.work_duration, settings?.short_break_duration, settings?.long_break_duration])
 
   // Timer state
   const [state, setState] = useState<TimerState>({
@@ -76,7 +87,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   //Initialize timer with settings and update when settings change
   useEffect(() => {
     if (settings) {
-      console.log('Settings changed in Timer:', {
+      console.log('Settings changed in Timer (version:', settingsVersion, '):', {
         work_duration: settings.work_duration,
         short_break_duration: settings.short_break_duration,
         long_break_duration: settings.long_break_duration,
@@ -102,23 +113,14 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
         
         console.log('Updating timer with new duration:', newDuration, 'for mode:', prev.mode, 'isReversed:', prev.isReversed)
         
-        // If timer is not active, update the time remaining
-        if (!prev.isActive) {
-          return {
-            ...prev,
-            timeRemaining: prev.isReversed ? 0 : newDuration,
-          }
-        }
-        
-        // If timer is active, we still need to update the duration for when it stops
-        // This ensures reverse mode gets the correct duration when toggled
+        // Always update the time remaining when settings change
         return {
           ...prev,
-          // Keep current time but update the mode's duration reference
+          timeRemaining: prev.isReversed ? 0 : newDuration,
         }
       })
     }
-  }, [settings])
+  }, [settings?.work_duration, settings?.short_break_duration, settings?.long_break_duration, settingsVersion])
 
 
   // Reset timer when settings change to apply new durations
