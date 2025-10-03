@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import "./globals.css"
 import { AuthProvider } from "@/hooks"  // ✅ clean import
+import { SettingsProvider } from "@/hooks/SettingsProvider"
 
 export const metadata = {
   title: "DoroBuddy - Pomodoro Timer",
@@ -15,9 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {/* ✅ Wrap children in AuthProvider */}
+        {/* ✅ Wrap children in AuthProvider and SettingsProvider */}
         <AuthProvider>
-          {children}
+          <SettingsProvider>
+            {children}
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>
