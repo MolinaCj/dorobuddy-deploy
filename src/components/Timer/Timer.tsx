@@ -39,16 +39,6 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const startTimeRef = useRef<number | null>(null)
   const hasCompletedRef = useRef(false)
 
-  //Initialize timer with settings
-  useEffect(() => {
-    if (settings && !state.isActive) {
-      setState(prev => ({
-        ...prev,
-        timeRemaining: settings.work_duration,
-      }))
-    }
-  }, [settings])
-
   // Get duration for current mode
   const getDuration = useCallback((mode: TimerMode): number => {
     if (!settings) return mode === 'work' ? 1500 : mode === 'shortBreak' ? 300 : 1800
@@ -65,6 +55,32 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
     }
   }, [settings])
 
+  //Initialize timer with settings and update when settings change
+  useEffect(() => {
+    if (settings) {
+      setState(prev => {
+        // Only update if timer is not active to avoid interrupting running timer
+        if (!prev.isActive) {
+          return {
+            ...prev,
+            timeRemaining: prev.isReversed ? 0 : getDuration(prev.mode),
+          }
+        }
+        return prev
+      })
+    }
+  }, [settings, getDuration])
+
+  // Reset timer when settings change to apply new durations
+  const resetTimerToCurrentSettings = useCallback(() => {
+    if (!state.isActive) {
+      setState(prev => ({
+        ...prev,
+        timeRemaining: prev.isReversed ? 0 : getDuration(prev.mode),
+      }))
+    }
+  }, [state.isActive, getDuration])
+
   // Switch timer mode
 const switchMode = useCallback(
   (newMode: TimerMode, incrementSession: boolean = false) => {
@@ -74,7 +90,7 @@ const switchMode = useCallback(
       timeRemaining: getDuration(newMode), // now always fresh
       isActive: false,
       sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
-      // don’t overwrite reverse here — just keep it as is
+      // don't overwrite reverse here — just keep it as is
     }))
     hasCompletedRef.current = false
 
@@ -90,7 +106,7 @@ const switchMode = useCallback(
       }
     }
   },
-  [settings] // depends on settings only
+  [settings, getDuration] // depends on settings and getDuration
 )
 
 
