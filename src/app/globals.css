@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --theme-primary: #3B82F6;
+  --theme-secondary: #EF4444;
+  --theme-accent: #10B981;
 }
 
 @theme inline {
@@ -19,8 +22,53 @@
   }
 }
 
+/* Theme-specific styles */
+.theme-nature {
+  --background: #f0fdf4;
+  --foreground: #14532d;
+}
+
+.theme-sunset {
+  --background: #fef3c7;
+  --foreground: #92400e;
+}
+
+.theme-ocean {
+  --background: #e0f2fe;
+  --foreground: #0c4a6e;
+}
+
+.theme-lavender {
+  --background: #faf5ff;
+  --foreground: #581c87;
+}
+
+/* Dark theme overrides */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/* Apply theme colors to common elements */
+.theme-nature .bg-blue-500 { background-color: var(--theme-primary) !important; }
+.theme-nature .text-blue-500 { color: var(--theme-primary) !important; }
+.theme-nature .border-blue-500 { border-color: var(--theme-primary) !important; }
+
+.theme-sunset .bg-blue-500 { background-color: var(--theme-primary) !important; }
+.theme-sunset .text-blue-500 { color: var(--theme-primary) !important; }
+.theme-sunset .border-blue-500 { border-color: var(--theme-primary) !important; }
+
+.theme-ocean .bg-blue-500 { background-color: var(--theme-primary) !important; }
+.theme-ocean .text-blue-500 { color: var(--theme-primary) !important; }
+.theme-ocean .border-blue-500 { border-color: var(--theme-primary) !important; }
+
+.theme-lavender .bg-blue-500 { background-color: var(--theme-primary) !important; }
+.theme-lavender .text-blue-500 { color: var(--theme-primary) !important; }
+.theme-lavender .border-blue-500 { border-color: var(--theme-primary) !important; }
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

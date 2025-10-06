@@ -91,10 +91,36 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (!settings) return
     const root = document.documentElement
     const themeId = settings.theme || 'default'
-    // Toggle Tailwind dark mode for components using `dark:` variants
-    root.classList.toggle('dark', themeId === 'dark')
-    // Expose theme identifier for CSS variables-based theming
+    
+    // Remove all existing theme classes
+    root.classList.remove('dark', 'theme-nature', 'theme-sunset', 'theme-ocean', 'theme-lavender')
+    
+    // Apply theme-specific classes
+    if (themeId === 'dark') {
+      root.classList.add('dark')
+    } else if (themeId !== 'default') {
+      root.classList.add(`theme-${themeId}`)
+    }
+    
+    // Set data-theme attribute for CSS variable theming
     root.setAttribute('data-theme', themeId)
+    
+    // Apply theme colors as CSS custom properties
+    const themeColors = {
+      default: ['#3B82F6', '#EF4444', '#10B981'],
+      dark: ['#1F2937', '#374151', '#4B5563'],
+      nature: ['#059669', '#0D9488', '#047857'],
+      sunset: ['#F59E0B', '#EF4444', '#DC2626'],
+      ocean: ['#0EA5E9', '#0284C7', '#0369A1'],
+      lavender: ['#8B5CF6', '#A855F7', '#9333EA']
+    }
+    
+    const colors = themeColors[themeId as keyof typeof themeColors] || themeColors.default
+    root.style.setProperty('--theme-primary', colors[0])
+    root.style.setProperty('--theme-secondary', colors[1])
+    root.style.setProperty('--theme-accent', colors[2])
+    
+    console.log('Theme applied:', themeId, 'Colors:', colors)
   }, [settings?.theme])
 
   const value: SettingsContextType = {
