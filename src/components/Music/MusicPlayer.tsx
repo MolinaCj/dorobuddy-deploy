@@ -31,7 +31,7 @@ export default function MusicPlayer({
   sessionActive = false,
   onPlayStateChange 
 }: MusicPlayerProps) {
-  const { settings } = useSettings();
+  const { settings, syncSpotifyStatus } = useSettings();
   const { 
     isConnected, 
     connect, 
@@ -57,58 +57,80 @@ export default function MusicPlayer({
   });
 
   const [showSpotifyConnect, setShowSpotifyConnect] = useState(false);
-  const [fallbackTracks] = useState<Track[]>([
+  // Default fallback tracks available to all users
+  const defaultTracks = [
     {
-      id: 'focus1',
+      id: 'deep',
       name: 'Deep Focus',
       artist: 'Focus Sounds',
       duration: 180,
       url: '/audio/focus-sounds/deep-focus.mp3',
     },
     {
-      id: 'nature1',
+      id: 'rain',
+      name: 'Rain Sounds',
+      artist: 'Nature Sounds',
+      duration: 200,
+      url: '/audio/ambient/rain.wav',
+    },
+    {
+      id: 'forest',
       name: 'Forest Ambience',
       artist: 'Nature Sounds',
       duration: 240,
       url: '/audio/ambient/forest.mp3',
     },
     {
-      id: 'ocean1',
+      id: 'ocean',
       name: 'Ocean Waves',
       artist: 'Nature Sounds',
       duration: 300,
       url: '/audio/ambient/ocean-waves.mp3',
     },
     {
-      id: 'rain1',
-      name: 'Rainfall',
-      artist: 'Nature Sounds',
+      id: 'coffee',
+      name: 'Coffee Shop',
+      artist: 'Ambient Sounds',
       duration: 200,
-      url: '/audio/ambient/rain.wav',
+      url: '/audio/ambient/coffee-shop.mp3',
     },
     {
-      id: 'cafe1',
-      name: 'Cafe',
-      artist: 'Cafe Ambience',
-      duration: 200,
-      url: '/audio/ambient/cafe.mp3',
-    },
-    {
-      id: 'whitenoise1',
-      name: 'White Noise',
-      artist: 'White Noise',
-      duration: 200,
-      url: '/audio/ambient/white-noise.mp3',
-    },
-    {
-      id: 'fireplace1',
-      name: 'Fire Place',
-      artist: 'Fire Place',
+      id: 'fire',
+      name: 'Fireplace',
+      artist: 'Ambient Sounds',
       duration: 200,
       url: '/audio/ambient/fireplace.mp3',
     },
-    // Add more fallback tracks
-  ]);
+    {
+      id: 'white',
+      name: 'White Noise',
+      artist: 'Ambient Sounds',
+      duration: 200,
+      url: '/audio/ambient/white-noise.mp3',
+    }
+  ];
+
+  // Get ambient track based on settings or use default
+  const getAmbientTrack = useCallback(() => {
+    // If user has selected a specific ambient sound in settings, use that
+    if (settings?.ambient_sound && settings.ambient_sound !== 'none') {
+      const ambientTracks = {
+        deep: defaultTracks[0],
+        rain: defaultTracks[1],
+        forest: defaultTracks[2],
+        ocean: defaultTracks[3],
+        coffee: defaultTracks[4],
+        fire: defaultTracks[5],
+        white: defaultTracks[6]
+      };
+      return ambientTracks[settings.ambient_sound as keyof typeof ambientTracks] || null;
+    }
+    
+    // If no settings or 'none' selected, return null (user can still select from default tracks)
+    return null;
+  }, [settings?.ambient_sound]);
+
+  const ambientTrack = getAmbientTrack();
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentFallbackIndex, setCurrentFallbackIndex] = useState(0);
@@ -154,15 +176,35 @@ export default function MusicPlayer({
     onPlayStateChange?.(localPlayback.isPlaying);
   }, [localPlayback.isPlaying, onPlayStateChange]);
 
+  // Sync Spotify connection status with settings
+  useEffect(() => {
+    if (settings) {
+      syncSpotifyStatus(isConnected);
+    }
+  }, [isConnected, settings, syncSpotifyStatus]);
+
   // Handle Spotify connection
   const handleSpotifyConnect = async () => {
     try {
       setShowSpotifyConnect(true);
       await connect();
       setShowSpotifyConnect(false);
+      // Sync with settings
+      await syncSpotifyStatus(true);
     } catch (error) {
       console.error('Failed to connect to Spotify:', error);
       setShowSpotifyConnect(false);
+    }
+  };
+
+  // Handle Spotify disconnection
+  const handleSpotifyDisconnect = async () => {
+    try {
+      await disconnect();
+      // Sync with settings
+      await syncSpotifyStatus(false);
+    } catch (error) {
+      console.error('Failed to disconnect from Spotify:', error);
     }
   };
 
@@ -194,24 +236,35 @@ export default function MusicPlayer({
 // Handle next track
 const handleNext = useCallback(() => {
   if (isFallbackMode) {
-    let nextIndex;
-    if (localPlayback.shuffle) {
-      // pick random different index
-      do {
-        nextIndex = Math.floor(Math.random() * fallbackTracks.length);
-      } while (nextIndex === currentFallbackIndex && fallbackTracks.length > 1);
+    // If user has selected a specific ambient track, restart it
+    if (ambientTrack) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        if (localPlayback.isPlaying) {
+          audioRef.current.play();
+        }
+      }
     } else {
-      // wrap around to 0
-      nextIndex = (currentFallbackIndex + 1) % fallbackTracks.length;
-    }
+      // Navigate through default tracks
+      let nextIndex;
+      if (localPlayback.shuffle) {
+        // pick random different index
+        do {
+          nextIndex = Math.floor(Math.random() * defaultTracks.length);
+        } while (nextIndex === currentFallbackIndex && defaultTracks.length > 1);
+      } else {
+        // wrap around to 0
+        nextIndex = (currentFallbackIndex + 1) % defaultTracks.length;
+      }
 
-    setCurrentFallbackIndex(nextIndex);
-    setLocalPlayback((prev) => ({
-      ...prev,
-      track: fallbackTracks[nextIndex],
-      position: 0,
-      isPlaying: true, // 👈 keep playing
-    }));
+      setCurrentFallbackIndex(nextIndex);
+      setLocalPlayback((prev) => ({
+        ...prev,
+        track: defaultTracks[nextIndex],
+        position: 0,
+        isPlaying: true,
+      }));
+    }
   } else {
     try {
       next(); // spotify sdk
@@ -219,22 +272,33 @@ const handleNext = useCallback(() => {
       console.error("Failed to skip track:", error);
     }
   }
-}, [isFallbackMode, currentFallbackIndex, fallbackTracks, next, localPlayback.shuffle]);
+}, [isFallbackMode, ambientTrack, currentFallbackIndex, defaultTracks, next, localPlayback.isPlaying, localPlayback.shuffle]);
 
 // Handle previous track
 const handlePrevious = useCallback(async () => {
   if (isFallbackMode) {
-    const prevIndex = currentFallbackIndex === 0 
-      ? fallbackTracks.length - 1 
-      : currentFallbackIndex - 1;
+    // If user has selected a specific ambient track, restart it
+    if (ambientTrack) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        if (localPlayback.isPlaying) {
+          audioRef.current.play();
+        }
+      }
+    } else {
+      // Navigate through default tracks
+      const prevIndex = currentFallbackIndex === 0 
+        ? defaultTracks.length - 1 
+        : currentFallbackIndex - 1;
 
-    setCurrentFallbackIndex(prevIndex);
-    setLocalPlayback(prev => ({ 
-      ...prev, 
-      track: fallbackTracks[prevIndex],
-      position: 0,
-      isPlaying: prev.isPlaying,   // 👈 preserve play/pause state
-    }));
+      setCurrentFallbackIndex(prevIndex);
+      setLocalPlayback(prev => ({ 
+        ...prev, 
+        track: defaultTracks[prevIndex],
+        position: 0,
+        isPlaying: prev.isPlaying,
+      }));
+    }
   } else {
     try {
       await previous();
@@ -242,7 +306,7 @@ const handlePrevious = useCallback(async () => {
       console.error('Failed to go to previous track:', error);
     }
   }
-}, [isFallbackMode, currentFallbackIndex, fallbackTracks, previous]);
+}, [isFallbackMode, ambientTrack, currentFallbackIndex, defaultTracks, previous, localPlayback.isPlaying]);
 
   // Handle volume change
   const handleVolumeChange = useCallback(async (newVolume: number) => {
@@ -259,15 +323,49 @@ const handlePrevious = useCallback(async () => {
     }
   }, [isFallbackMode, isConnected, setVolume]);
 
-  // Initialize fallback player
+  // Initialize fallback player with settings track or default track
   useEffect(() => {
-    if (isFallbackMode && fallbackTracks.length > 0) {
+    if (isFallbackMode) {
+      const trackToUse = ambientTrack || defaultTracks[currentFallbackIndex];
       setLocalPlayback(prev => ({ 
         ...prev, 
-        track: fallbackTracks[currentFallbackIndex] 
+        track: trackToUse 
       }));
     }
-  }, [isFallbackMode, fallbackTracks, currentFallbackIndex]);
+  }, [isFallbackMode, ambientTrack, currentFallbackIndex]);
+
+  // Handle settings changes - immediately switch to new ambient track
+  useEffect(() => {
+    if (isFallbackMode && settings?.ambient_sound) {
+      if (settings.ambient_sound === 'none') {
+        // If 'none' is selected, stop playing and show default track
+        setLocalPlayback(prev => ({ 
+          ...prev, 
+          track: defaultTracks[currentFallbackIndex],
+          isPlaying: false 
+        }));
+        // Stop the audio if it's playing
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+      } else if (ambientTrack) {
+        // If a specific ambient track is selected, switch to it immediately
+        const wasPlaying = localPlayback.isPlaying;
+        setLocalPlayback(prev => ({ 
+          ...prev, 
+          track: ambientTrack,
+          isPlaying: prev.isPlaying // Keep current play state
+        }));
+        
+        // If audio was playing, start the new track
+        if (wasPlaying && audioRef.current) {
+          audioRef.current.src = ambientTrack.url;
+          audioRef.current.load();
+          audioRef.current.play().catch(console.error);
+        }
+      }
+    }
+  }, [settings?.ambient_sound, isFallbackMode, ambientTrack, currentFallbackIndex, localPlayback.isPlaying]);
 
   // Auto-pause during focus sessions (optional)
   useEffect(() => {
@@ -277,7 +375,9 @@ const handlePrevious = useCallback(async () => {
     }
   }, [sessionActive, settings?.spotify_enabled]);
 
-  const currentTrack = localPlayback.track || fallbackTracks[currentFallbackIndex];
+  const currentTrack = isFallbackMode 
+    ? (ambientTrack || defaultTracks[currentFallbackIndex]) 
+    : localPlayback.track;
   const progressPercentage = localPlayback.duration > 0 
     ? (localPlayback.position / localPlayback.duration) * 100 
     : 0;
@@ -348,7 +448,7 @@ const handlePrevious = useCallback(async () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-green-600">Spotify Connected</span>
                 <button
-                  onClick={disconnect}
+                  onClick={handleSpotifyDisconnect}
                   className="text-xs text-gray-500 hover:text-gray-700"
                 >
                   Disconnect
@@ -367,6 +467,19 @@ const handlePrevious = useCallback(async () => {
         </div>
       </div>
 
+      {/* No Track Selected Message */}
+      {!currentTrack && isFallbackMode && (
+        <div className="p-4 text-center">
+          <div className="text-4xl mb-2">🎵</div>
+          <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+            Ready to Play Music
+          </h4>
+          <p className="text-sm text-gray-500 mb-4">
+            Use the controls below to play ambient sounds, or go to Settings → Music to set a default
+          </p>
+        </div>
+      )}
+
       {/* Current Track Display */}
       {currentTrack && (
         <div className="p-4">
@@ -376,9 +489,16 @@ const handlePrevious = useCallback(async () => {
             </div>
             
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-gray-900 dark:text-white truncate">
-                {currentTrack.name}
-              </h4>
+              <div className="flex items-center space-x-2">
+                <h4 className="font-medium text-gray-900 dark:text-white truncate">
+                  {currentTrack.name}
+                </h4>
+                {ambientTrack && (
+                  <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+                    From Settings
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500 truncate">
                 {currentTrack.artist}
               </p>
@@ -420,7 +540,7 @@ const handlePrevious = useCallback(async () => {
             </div>
 
             {/* External Link */}
-            {currentTrack.spotify_id && (
+            {'spotify_id' in currentTrack && currentTrack.spotify_id && (
               <button
                 onClick={() => window.open(`https://open.spotify.com/track/${currentTrack.spotify_id}`, '_blank')}
                 className="p-2 text-gray-400 hover:text-green-500 rounded-lg"

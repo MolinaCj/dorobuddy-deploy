@@ -71,6 +71,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         notification_volume: settings.notification_volume,
         music_volume: settings.music_volume,
         ambient_volume: settings.ambient_volume,
+        ambient_sound: settings.ambient_sound,
         spotify_enabled: settings.spotify_enabled,
       });
     }
@@ -715,6 +716,27 @@ const handleSubmit = async (e: React.FormEvent) => {
                       Built-in Ambient Sounds
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* No Ambient Sound Option */}
+                      <label className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                        formData.ambient_sound === 'none' || !formData.ambient_sound
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="ambient_sound"
+                          value="none"
+                          checked={formData.ambient_sound === 'none' || !formData.ambient_sound}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, ambient_sound: e.target.value }));
+                            setHasChanges(true);
+                          }}
+                          className="w-4 h-4 text-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="text-lg">🔇</span>
+                        <span className="text-sm font-medium">No Ambient Sound</span>
+                      </label>
+
                       {[
                         { id: 'deep', name: 'Deep Focus', icon: '🎧' },
                         { id: 'rain', name: 'Rain', icon: '🌧️' },
@@ -724,13 +746,24 @@ const handleSubmit = async (e: React.FormEvent) => {
                         { id: 'fire', name: 'Fireplace', icon: '🔥' },
                         { id: 'white', name: 'White Noise', icon: '📻' },
                       ].map(sound => (
-                        <label key={sound.id} className="flex items-center space-x-3 p-2 border border-gray-100 rounded-lg">
+                        <label key={sound.id} className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          formData.ambient_sound === sound.id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                        }`}>
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="ambient_sound"
+                            value={sound.id}
+                            checked={formData.ambient_sound === sound.id}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, ambient_sound: e.target.value }));
+                              setHasChanges(true);
+                            }}
                             className="w-4 h-4 text-blue-500 border-gray-300 rounded"
                           />
                           <span className="text-lg">{sound.icon}</span>
-                          <span className="text-sm">{sound.name}</span>
+                          <span className="text-sm font-medium">{sound.name}</span>
                         </label>
                       ))}
                     </div>
