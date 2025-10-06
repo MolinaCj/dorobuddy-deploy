@@ -41,7 +41,7 @@ export default function Footer({ className = '', compact = false }: FooterProps)
       }
 
       if (!creatorName) {
-        creatorName = 'Clent James Molina';
+        creatorName = 'clnt_mln';
       }
 
       return {
@@ -287,7 +287,7 @@ export function StaticFooter({
 export function getBuildTimeInfo(): BuildInfo {
   return {
     buildDate: new Date().toISOString().split('T')[0],
-    creatorName: process.env.NEXT_PUBLIC_CREATOR_NAME || 'Clent James Molina',
+    creatorName: process.env.NEXT_PUBLIC_CREATOR_NAME || 'clnt_mln',
     version: process.env.npm_package_version || '1.0.0',
     commitHash:
       process.env.NEXT_PUBLIC_COMMIT_HASH?.substring(0, 7) || undefined,
