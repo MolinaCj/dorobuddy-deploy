@@ -64,7 +64,7 @@ export default function MusicPlayer({
       name: 'Deep Focus',
       artist: 'Focus Sounds',
       duration: 180,
-      url: '/audio/focus-sounds/deep-focus.mp3',
+      url: '/audio/ambient/deep-focus.mp3',
     },
     {
       id: 'rain',
