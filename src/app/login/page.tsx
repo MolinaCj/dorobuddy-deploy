@@ -115,9 +115,9 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          {/* <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-            <span className="text-2xl">🍅</span>
-          </div> */}
+          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+            <span className="text-2xl">⏳</span>
+          </div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
             {isLogin ? 'Welcome back to DoroBuddy' : 'Create your DoroBuddy account'}
           </h2>

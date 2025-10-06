@@ -76,7 +76,7 @@ export default function HomePage() {
             {/* Logo */}
             <div className="flex items-center">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                DoroBuddy
+                ⏳ DoroBuddy
               </h1>
               <span className="ml-3 text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
                 Stay focused, future CPA!
@@ -240,7 +240,7 @@ export default function HomePage() {
               <TaskManager
                 selectedTaskId={selectedTaskId}
                 onTaskSelect={handleTaskSelect}
-                compact={true}
+                compact={false}
               />
             </div>
 

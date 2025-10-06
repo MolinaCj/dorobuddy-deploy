@@ -1,6 +1,6 @@
 // components/Tasks/TaskManager.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, Clock, Flag, Calendar, Filter } from 'lucide-react';
+import { Plus, Clock, Filter } from 'lucide-react';
 import { Task, CreateTaskRequest, UpdateTaskRequest } from '@/types/api';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
