@@ -120,6 +120,66 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--theme-secondary', colors[1])
     root.style.setProperty('--theme-accent', colors[2])
     
+    // Apply comprehensive theme variables with subtle theme colors
+    const themeVariables = {
+      default: {
+        background: '#ffffff',
+        foreground: '#171717',
+        cardBg: '#f9fafb',
+        cardBorder: '#e5e7eb',
+        inputBg: '#ffffff',
+        accentBg: '#f3f4f6'
+      },
+      dark: {
+        background: '#0f0f0f',
+        foreground: '#e5e5e5',
+        cardBg: '#1a1a1a',
+        cardBorder: '#404040',
+        inputBg: '#262626',
+        accentBg: '#1a1a1a'
+      },
+      nature: {
+        background: '#f0f9f0',
+        foreground: '#1f2937',
+        cardBg: '#e8f5e8',
+        cardBorder: '#c3e6c3',
+        inputBg: '#ffffff',
+        accentBg: '#f0f9f0'
+      },
+      sunset: {
+        background: '#fff7ed',
+        foreground: '#1f2937',
+        cardBg: '#fed7aa',
+        cardBorder: '#fdba74',
+        inputBg: '#ffffff',
+        accentBg: '#fff1e6'
+      },
+      ocean: {
+        background: '#f0f9ff',
+        foreground: '#1f2937',
+        cardBg: '#dbeafe',
+        cardBorder: '#93c5fd',
+        inputBg: '#ffffff',
+        accentBg: '#f0f9ff'
+      },
+      lavender: {
+        background: '#faf5ff',
+        foreground: '#1f2937',
+        cardBg: '#f3e8ff',
+        cardBorder: '#d8b4fe',
+        inputBg: '#ffffff',
+        accentBg: '#faf5ff'
+      }
+    }
+    
+    const themeVars = themeVariables[themeId as keyof typeof themeVariables] || themeVariables.default
+    root.style.setProperty('--background', themeVars.background)
+    root.style.setProperty('--foreground', themeVars.foreground)
+    root.style.setProperty('--card-bg', themeVars.cardBg)
+    root.style.setProperty('--card-border', themeVars.cardBorder)
+    root.style.setProperty('--input-bg', themeVars.inputBg)
+    root.style.setProperty('--accent-bg', themeVars.accentBg)
+    
     console.log('Theme applied:', themeId, 'Colors:', colors)
   }, [settings?.theme])
 

@@ -22,49 +22,197 @@
   }
 }
 
-/* Theme-specific styles */
+/* Theme-specific styles with proper theme colors */
 .theme-nature {
-  --background: #f0fdf4;
-  --foreground: #14532d;
+  --background: #f0f9f0;
+  --foreground: #1f2937;
+  --card-bg: #e8f5e8;
+  --card-border: #c3e6c3;
+  --input-bg: #ffffff;
+  --button-bg: var(--theme-primary);
+  --button-hover: #047857;
+  --accent-bg: #f0f9f0;
 }
 
 .theme-sunset {
-  --background: #fef3c7;
-  --foreground: #92400e;
+  --background: #fff7ed;
+  --foreground: #1f2937;
+  --card-bg: #fed7aa;
+  --card-border: #fdba74;
+  --input-bg: #ffffff;
+  --button-bg: var(--theme-primary);
+  --button-hover: #d97706;
+  --accent-bg: #fff1e6;
 }
 
 .theme-ocean {
-  --background: #e0f2fe;
-  --foreground: #0c4a6e;
+  --background: #f0f9ff;
+  --foreground: #1f2937;
+  --card-bg: #dbeafe;
+  --card-border: #93c5fd;
+  --input-bg: #ffffff;
+  --button-bg: var(--theme-primary);
+  --button-hover: #0284c7;
+  --accent-bg: #f0f9ff;
 }
 
 .theme-lavender {
   --background: #faf5ff;
-  --foreground: #581c87;
+  --foreground: #1f2937;
+  --card-bg: #f3e8ff;
+  --card-border: #d8b4fe;
+  --input-bg: #ffffff;
+  --button-bg: var(--theme-primary);
+  --button-hover: #7c3aed;
+  --accent-bg: #faf5ff;
 }
 
-/* Dark theme overrides */
+/* Dark theme overrides with better contrast */
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0f0f0f;
+  --foreground: #e5e5e5;
+  --card-bg: #1a1a1a;
+  --card-border: #404040;
+  --input-bg: #262626;
+  --button-bg: var(--theme-primary);
+  --button-hover: #1e40af;
+  --accent-bg: #1a1a1a;
 }
 
-/* Apply theme colors to common elements */
-.theme-nature .bg-blue-500 { background-color: var(--theme-primary) !important; }
-.theme-nature .text-blue-500 { color: var(--theme-primary) !important; }
-.theme-nature .border-blue-500 { border-color: var(--theme-primary) !important; }
+/* Comprehensive theme application */
+.theme-nature,
+.theme-sunset,
+.theme-ocean,
+.theme-lavender {
+  /* Apply to all backgrounds */
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
 
-.theme-sunset .bg-blue-500 { background-color: var(--theme-primary) !important; }
-.theme-sunset .text-blue-500 { color: var(--theme-primary) !important; }
-.theme-sunset .border-blue-500 { border-color: var(--theme-primary) !important; }
+/* Card and component backgrounds */
+.theme-nature .bg-white,
+.theme-nature .bg-gray-50,
+.theme-nature .bg-gray-100,
+.theme-nature .bg-gray-200 {
+  background-color: var(--card-bg) !important;
+}
 
-.theme-ocean .bg-blue-500 { background-color: var(--theme-primary) !important; }
-.theme-ocean .text-blue-500 { color: var(--theme-primary) !important; }
-.theme-ocean .border-blue-500 { border-color: var(--theme-primary) !important; }
+.theme-sunset .bg-white,
+.theme-sunset .bg-gray-50,
+.theme-sunset .bg-gray-100,
+.theme-sunset .bg-gray-200 {
+  background-color: var(--card-bg) !important;
+}
 
-.theme-lavender .bg-blue-500 { background-color: var(--theme-primary) !important; }
-.theme-lavender .text-blue-500 { color: var(--theme-primary) !important; }
-.theme-lavender .border-blue-500 { border-color: var(--theme-primary) !important; }
+.theme-ocean .bg-white,
+.theme-ocean .bg-gray-50,
+.theme-ocean .bg-gray-100,
+.theme-ocean .bg-gray-200 {
+  background-color: var(--card-bg) !important;
+}
+
+.theme-lavender .bg-white,
+.theme-lavender .bg-gray-50,
+.theme-lavender .bg-gray-100,
+.theme-lavender .bg-gray-200 {
+  background-color: var(--card-bg) !important;
+}
+
+/* Border colors */
+.theme-nature .border-gray-200,
+.theme-nature .border-gray-300 {
+  border-color: var(--card-border) !important;
+}
+
+.theme-sunset .border-gray-200,
+.theme-sunset .border-gray-300 {
+  border-color: var(--card-border) !important;
+}
+
+.theme-ocean .border-gray-200,
+.theme-ocean .border-gray-300 {
+  border-color: var(--card-border) !important;
+}
+
+.theme-lavender .border-gray-200,
+.theme-lavender .border-gray-300 {
+  border-color: var(--card-border) !important;
+}
+
+/* Button colors */
+.theme-nature .bg-blue-500,
+.theme-nature .bg-blue-600 {
+  background-color: var(--theme-primary) !important;
+}
+
+.theme-sunset .bg-blue-500,
+.theme-sunset .bg-blue-600 {
+  background-color: var(--theme-primary) !important;
+}
+
+.theme-ocean .bg-blue-500,
+.theme-ocean .bg-blue-600 {
+  background-color: var(--theme-primary) !important;
+}
+
+.theme-lavender .bg-blue-500,
+.theme-lavender .bg-blue-600 {
+  background-color: var(--theme-primary) !important;
+}
+
+/* Text colors */
+.theme-nature .text-gray-900,
+.theme-nature .text-gray-800 {
+  color: var(--foreground) !important;
+}
+
+.theme-sunset .text-gray-900,
+.theme-sunset .text-gray-800 {
+  color: var(--foreground) !important;
+}
+
+.theme-ocean .text-gray-900,
+.theme-ocean .text-gray-800 {
+  color: var(--foreground) !important;
+}
+
+.theme-lavender .text-gray-900,
+.theme-lavender .text-gray-800 {
+  color: var(--foreground) !important;
+}
+
+/* Input fields */
+.theme-nature input,
+.theme-nature textarea,
+.theme-nature select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--card-border) !important;
+  color: var(--foreground) !important;
+}
+
+.theme-sunset input,
+.theme-sunset textarea,
+.theme-sunset select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--card-border) !important;
+  color: var(--foreground) !important;
+}
+
+.theme-ocean input,
+.theme-ocean textarea,
+.theme-ocean select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--card-border) !important;
+  color: var(--foreground) !important;
+}
+
+.theme-lavender input,
+.theme-lavender textarea,
+.theme-lavender select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--card-border) !important;
+  color: var(--foreground) !important;
+}
 
 body {
   background: var(--background);
@@ -72,3 +220,78 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* Universal theme application - affects ALL elements */
+.theme-nature *,
+.theme-sunset *,
+.theme-ocean *,
+.theme-lavender * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Override all common Tailwind background classes */
+.theme-nature .bg-white { background-color: var(--card-bg) !important; }
+.theme-nature .bg-gray-50 { background-color: var(--card-bg) !important; }
+.theme-nature .bg-gray-100 { background-color: var(--card-bg) !important; }
+.theme-nature .bg-gray-200 { background-color: var(--card-bg) !important; }
+.theme-nature .bg-gray-800 { background-color: var(--card-bg) !important; }
+.theme-nature .bg-gray-700 { background-color: var(--card-bg) !important; }
+
+.theme-sunset .bg-white { background-color: var(--card-bg) !important; }
+.theme-sunset .bg-gray-50 { background-color: var(--card-bg) !important; }
+.theme-sunset .bg-gray-100 { background-color: var(--card-bg) !important; }
+.theme-sunset .bg-gray-200 { background-color: var(--card-bg) !important; }
+.theme-sunset .bg-gray-800 { background-color: var(--card-bg) !important; }
+.theme-sunset .bg-gray-700 { background-color: var(--card-bg) !important; }
+
+.theme-ocean .bg-white { background-color: var(--card-bg) !important; }
+.theme-ocean .bg-gray-50 { background-color: var(--card-bg) !important; }
+.theme-ocean .bg-gray-100 { background-color: var(--card-bg) !important; }
+.theme-ocean .bg-gray-200 { background-color: var(--card-bg) !important; }
+.theme-ocean .bg-gray-800 { background-color: var(--card-bg) !important; }
+.theme-ocean .bg-gray-700 { background-color: var(--card-bg) !important; }
+
+.theme-lavender .bg-white { background-color: var(--card-bg) !important; }
+.theme-lavender .bg-gray-50 { background-color: var(--card-bg) !important; }
+.theme-lavender .bg-gray-100 { background-color: var(--card-bg) !important; }
+.theme-lavender .bg-gray-200 { background-color: var(--card-bg) !important; }
+.theme-lavender .bg-gray-800 { background-color: var(--card-bg) !important; }
+.theme-lavender .bg-gray-700 { background-color: var(--card-bg) !important; }
+
+/* Override all common Tailwind text classes */
+.theme-nature .text-gray-900 { color: var(--foreground) !important; }
+.theme-nature .text-gray-800 { color: var(--foreground) !important; }
+.theme-nature .text-gray-700 { color: var(--foreground) !important; }
+.theme-nature .text-gray-600 { color: var(--foreground) !important; }
+
+.theme-sunset .text-gray-900 { color: var(--foreground) !important; }
+.theme-sunset .text-gray-800 { color: var(--foreground) !important; }
+.theme-sunset .text-gray-700 { color: var(--foreground) !important; }
+.theme-sunset .text-gray-600 { color: var(--foreground) !important; }
+
+.theme-ocean .text-gray-900 { color: var(--foreground) !important; }
+.theme-ocean .text-gray-800 { color: var(--foreground) !important; }
+.theme-ocean .text-gray-700 { color: var(--foreground) !important; }
+.theme-ocean .text-gray-600 { color: var(--foreground) !important; }
+
+.theme-lavender .text-gray-900 { color: var(--foreground) !important; }
+.theme-lavender .text-gray-800 { color: var(--foreground) !important; }
+.theme-lavender .text-gray-700 { color: var(--foreground) !important; }
+.theme-lavender .text-gray-600 { color: var(--foreground) !important; }
+
+/* Override all common Tailwind border classes */
+.theme-nature .border-gray-200 { border-color: var(--card-border) !important; }
+.theme-nature .border-gray-300 { border-color: var(--card-border) !important; }
+.theme-nature .border-gray-700 { border-color: var(--card-border) !important; }
+
+.theme-sunset .border-gray-200 { border-color: var(--card-border) !important; }
+.theme-sunset .border-gray-300 { border-color: var(--card-border) !important; }
+.theme-sunset .border-gray-700 { border-color: var(--card-border) !important; }
+
+.theme-ocean .border-gray-200 { border-color: var(--card-border) !important; }
+.theme-ocean .border-gray-300 { border-color: var(--card-border) !important; }
+.theme-ocean .border-gray-700 { border-color: var(--card-border) !important; }
+
+.theme-lavender .border-gray-200 { border-color: var(--card-border) !important; }
+.theme-lavender .border-gray-300 { border-color: var(--card-border) !important; }
+.theme-lavender .border-gray-700 { border-color: var(--card-border) !important; }
