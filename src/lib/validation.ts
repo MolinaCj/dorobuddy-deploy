@@ -581,7 +581,7 @@ export const ValidationUtils = {
     } = {}
   ): ValidationResult {
     const errors: string[] = []
-    const { maxSize = 5 * 1024 * 1024, allowedTypes = [], maxFiles = 1 } = options
+    const { maxSize = 5 * 1024 * 1024, allowedTypes = [] } = options
     
     // Size check
     if (file.size > maxSize) {

@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     for (let i = sortedDates.length - 1; i >= 0; i--) {
       const date = sortedDates[i];
-      const hasActivity = dailyData.get(date)?.count > 0;
+      const hasActivity = (dailyData.get(date)?.count ?? 0) > 0;
       
       if (hasActivity) {
         tempStreak++;

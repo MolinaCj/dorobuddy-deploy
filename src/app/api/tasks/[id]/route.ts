@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 // ✅ Update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
@@ -15,12 +15,13 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const updates = await request.json();
 
     const { data: updatedTask, error } = await supabase
       .from("tasks")
       .update(updates)
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id) // 🔒 ensure only owner can update
       .select()
       .single();
@@ -40,7 +41,7 @@ export async function PUT(
 // ✅ Delete task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
@@ -50,10 +51,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const { error } = await supabase
       .from("tasks")
       .delete()
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id); // 🔒 ensure only owner can delete
 
     if (error) {

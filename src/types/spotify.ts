@@ -12,8 +12,8 @@ export interface SpotifyPlayerOptions {
 export interface SpotifyPlayer {
   connect(): Promise<boolean>
   disconnect(): void
-  addListener(event: string, callback: (data: any) => void): void
-  removeListener(event: string, callback?: (data: any) => void): void
+  addListener(event: string, callback: (data: unknown) => void): void
+  removeListener(event: string, callback?: (data: unknown) => void): void
   getCurrentState(): Promise<SpotifyPlaybackState | null>
   setName(name: string): Promise<void>
   getVolume(): Promise<number>
@@ -30,7 +30,7 @@ export interface SpotifyPlayer {
 export interface SpotifyPlaybackState {
   context: {
     uri: string
-    metadata: any
+    metadata: Record<string, unknown>
   }
   disallows: {
     pausing: boolean

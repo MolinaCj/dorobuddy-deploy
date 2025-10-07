@@ -135,24 +135,29 @@ export function useSpotify() {
       })
 
       // Error handling
-      player.addListener('initialization_error', ({ message }: { message: string }) => {
+      player.addListener('initialization_error', (data: unknown) => {
+        const { message } = data as { message: string };
         console.error('Failed to initialize:', message)
       })
 
-      player.addListener('authentication_error', ({ message }: { message: string }) => {
+      player.addListener('authentication_error', (data: unknown) => {
+        const { message } = data as { message: string };
         console.error('Failed to authenticate:', message)
       })
 
-      player.addListener('account_error', ({ message }: { message: string }) => {
+      player.addListener('account_error', (data: unknown) => {
+        const { message } = data as { message: string };
         console.error('Failed to validate Spotify account:', message)
       })
 
-      player.addListener('playback_error', ({ message }: { message: string }) => {
+      player.addListener('playback_error', (data: unknown) => {
+        const { message } = data as { message: string };
         console.error('Failed to perform playback:', message)
       })
 
       // Ready
-      player.addListener('ready', ({ device_id }: { device_id: string }) => {
+      player.addListener('ready', (data: unknown) => {
+        const { device_id } = data as { device_id: string };
         console.log('Ready with Device ID', device_id)
         setState(prev => ({
           ...prev,
@@ -162,7 +167,8 @@ export function useSpotify() {
       })
 
       // Not Ready
-      player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+      player.addListener('not_ready', (data: unknown) => {
+        const { device_id } = data as { device_id: string };
         console.log('Device ID has gone offline', device_id)
         setState(prev => ({
           ...prev,

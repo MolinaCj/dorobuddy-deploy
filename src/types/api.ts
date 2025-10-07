@@ -1,5 +1,5 @@
 // src/types/api.ts - Complete API Types for App Router
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   message?: string;
