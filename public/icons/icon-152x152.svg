@@ -1,0 +1,25 @@
+
+<svg width="152" height="152" viewBox="0 0 152 152" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="76" cy="76" r="60.800000000000004" fill="url(#grad)" stroke="#1e40af" stroke-width="2.375"/>
+  
+  <!-- Timer icon -->
+  <circle cx="76" cy="76" r="36.48" fill="none" stroke="white" stroke-width="4.75"/>
+  
+  <!-- Timer hands -->
+  <line x1="76" y1="76" x2="76" y2="53.2" stroke="white" stroke-width="4.75" stroke-linecap="round"/>
+  <line x1="76" y1="76" x2="106.4" y2="76" stroke="white" stroke-width="4.75" stroke-linecap="round"/>
+  
+  <!-- Center dot -->
+  <circle cx="76" cy="76" r="4.75" fill="white"/>
+  
+  <!-- D for DoroBuddy -->
+  <text x="76" y="91.2" font-family="Arial, sans-serif" font-size="30.400000000000002" font-weight="bold" fill="white" text-anchor="middle">D</text>
+</svg>

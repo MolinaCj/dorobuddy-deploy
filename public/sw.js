@@ -1,5 +1,5 @@
 // public/sw.js - DoroBuddy Service Worker
-const CACHE_NAME = 'dorobuddy-v1.0.0';
+const CACHE_NAME = 'dorobuddy-v1.0.1';
 const OFFLINE_URL = '/offline.html';
 
 // Critical assets to cache immediately
@@ -8,8 +8,8 @@ const PRECACHE_ASSETS = [
   '/login',
   '/offline.html',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  '/icons/icon-192x192.svg',
+  '/icons/icon-512x512.svg',
 ];
 
 // Assets to cache on first access
@@ -303,8 +303,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'Session reminder!',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-96x96.png',
+    icon: '/icons/icon-192x192.svg',
+    badge: '/icons/icon-96x96.svg',
     vibrate: [200, 100, 200],
     data: {
       url: '/'
@@ -313,12 +313,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'view',
         title: 'View App',
-        icon: '/icons/icon-96x96.png'
+        icon: '/icons/icon-96x96.svg'
       },
       {
         action: 'dismiss',
         title: 'Dismiss',
-        icon: '/icons/icon-96x96.png'
+        icon: '/icons/icon-96x96.svg'
       }
     ]
   };
