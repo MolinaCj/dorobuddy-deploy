@@ -12,7 +12,7 @@ const FALLBACK_PLAYLISTS = [
         name: 'Deep Focus',
         artist: 'Focus Sounds',
         duration: 180,
-        url: '/audio/ambient/deep-focus.mp3',
+        url: '/audio/focus-sounds/deep-focus.mp3',
       },
     ],
   },

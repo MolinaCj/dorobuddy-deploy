@@ -53,7 +53,6 @@ export interface UserSettings {
   notification_volume: number;
   music_volume: number;
   ambient_volume: number;
-  ambient_sound: string; // selected ambient sound
   spotify_enabled: boolean;
   created_at: string;
   updated_at: string;
@@ -73,7 +72,6 @@ export interface UpdateSettingsRequest {
   notification_volume?: number;
   music_volume?: number;
   ambient_volume?: number;
-  ambient_sound?: string;
   spotify_enabled?: boolean;
 }
 
