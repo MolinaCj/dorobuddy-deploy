@@ -8,8 +8,6 @@ export const metadata = {
   title: "DoroBuddy - Pomodoro Timer",
   description: "A distraction-free Pomodoro timer with task management",
   manifest: "/manifest.json",
-  themeColor: "#3b82f6",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -19,6 +17,14 @@ export const metadata = {
     icon: "/icons/icon-192x192.png",
     apple: "/icons/icon-192x192.png"
   }
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#3b82f6"
 }
 
 export default function RootLayout({
