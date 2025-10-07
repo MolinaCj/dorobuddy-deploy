@@ -41,7 +41,7 @@ export default function Footer({ className = '', compact = false }: FooterProps)
       }
 
       if (!creatorName) {
-        creatorName = 'clnt';
+        creatorName = 'clnt_mln';
       }
 
       return {
