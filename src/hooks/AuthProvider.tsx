@@ -97,8 +97,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setState(prev => ({ ...prev, profile: null }))
         }
 
-        if (event === 'SIGNED_IN') router.push('/')
-        if (event === 'SIGNED_OUT') router.push('/login')
+        // Handle different auth events
+        if (event === 'SIGNED_IN') {
+          // Check if we're on the confirmation page
+          if (window.location.pathname === '/auth/confirmed') {
+            // Don't redirect, let the confirmation page handle it
+            console.log('User signed in on confirmation page, letting page handle it')
+            return
+          }
+          router.push('/')
+        }
+        if (event === 'SIGNED_OUT') {
+          // Only redirect to login if not on confirmation page
+          if (window.location.pathname !== '/auth/confirmed') {
+            router.push('/login')
+          }
+        }
+        if (event === 'TOKEN_REFRESHED') {
+          // Handle token refresh on confirmation page
+          if (window.location.pathname === '/auth/confirmed') {
+            console.log('Token refreshed on confirmation page')
+            return
+          }
+        }
       }
     )
 

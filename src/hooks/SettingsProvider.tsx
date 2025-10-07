@@ -28,15 +28,32 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const fetchSettings = async () => {
     if (!user) {
       setLoading(false)
+      setSettings(null)
       return
     }
 
     try {
       setLoading(true)
       setError(null)
+      
+      // Check if user is properly authenticated by getting current session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
+        console.log('No valid session found, skipping settings fetch')
+        setLoading(false)
+        setSettings(null)
+        return
+      }
+
       const response = await fetch('/api/settings')
       
       if (!response.ok) {
+        if (response.status === 401) {
+          console.log('User not authenticated, skipping settings fetch')
+          setLoading(false)
+          setSettings(null)
+          return
+        }
         throw new Error('Failed to fetch settings')
       }
 
@@ -45,7 +62,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setSettings(data)
     } catch (err) {
       console.error('Error fetching settings:', err)
-      setError(err as Error)
+      // Don't set error for authentication issues
+      if (err instanceof Error && !err.message.includes('Failed to fetch settings')) {
+        setError(err as Error)
+      }
     } finally {
       setLoading(false)
     }
@@ -84,6 +104,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   // Fetch settings when user changes
   useEffect(() => {
+    // Don't fetch settings on confirmation page to avoid errors
+    if (typeof window !== 'undefined' && window.location.pathname === '/auth/confirmed') {
+      return
+    }
     fetchSettings()
   }, [user])
 
