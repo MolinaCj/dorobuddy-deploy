@@ -11,7 +11,7 @@ import SettingsModal from '@/components/Settings/SettingsModal'
 import Footer from '@/components/Layout/Footer'
 import InstallPrompt from '@/components/PWA/InstallPrompt'
 import OfflineNotice from '@/components/PWA/OfflineNotice'
-import { generateMockHeatmapData } from '@/components/Stats/Heatmap'
+import { useHeatmapData } from '@/components/Stats/Heatmap'
 import { Settings, BarChart3, Music, Menu, X } from 'lucide-react'
 
 export default function HomePage() {
@@ -22,7 +22,8 @@ export default function HomePage() {
   const [showMusic, setShowMusic] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSession, setActiveSession] = useState<string | null>(null)
-  const [heatmapData, setHeatmapData] = useState(generateMockHeatmapData(365))
+  // Use real heatmap data instead of mock data
+  const { data: heatmapData, loading: heatmapLoading, error: heatmapError } = useHeatmapData()
 
   const handleSessionComplete = (sessionId: string) => {
     console.log('Session completed:', sessionId)
@@ -276,12 +277,35 @@ export default function HomePage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <Heatmap
-                data={heatmapData}
-                compact={false}
-                showLegend={true}
-                showStats={true}
-              />
+              {heatmapLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-500 dark:text-gray-400">Loading your activity data...</p>
+                  </div>
+                </div>
+              ) : heatmapError ? (
+                <div className="text-center py-12">
+                  <p className="text-red-500 dark:text-red-400 mb-2">Failed to load activity data</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {heatmapError.message || 'Please try again later'}
+                  </p>
+                </div>
+              ) : heatmapData ? (
+                <Heatmap
+                  data={heatmapData}
+                  compact={false}
+                  showLegend={true}
+                  showStats={true}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400 mb-2">No activity data available</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Start your first focus session to see your activity heatmap!
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

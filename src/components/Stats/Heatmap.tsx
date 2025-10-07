@@ -21,13 +21,15 @@ interface DayData extends HeatmapData {
   isCurrentMonth: boolean;
 }
 
-// Intensity level colors (GitHub-inspired)
+// Enhanced intensity level colors with better visual distinction
 const INTENSITY_COLORS = [
   'bg-gray-100 dark:bg-gray-800', // 0 - no activity
-  'bg-green-200 dark:bg-green-900', // 1 - low activity
-  'bg-green-300 dark:bg-green-700', // 2 - medium-low activity
-  'bg-green-400 dark:bg-green-600', // 3 - medium-high activity
-  'bg-green-500 dark:bg-green-500', // 4 - high activity
+  'bg-green-200 dark:bg-green-900', // 1 - very low activity
+  'bg-green-300 dark:bg-green-800', // 2 - low activity
+  'bg-green-400 dark:bg-green-700', // 3 - medium activity
+  'bg-green-500 dark:bg-green-600', // 4 - high activity
+  'bg-green-600 dark:bg-green-500', // 5 - very high activity
+  'bg-green-700 dark:bg-green-400', // 6 - extremely high activity
 ];
 
 const MONTH_NAMES = [
@@ -36,6 +38,56 @@ const MONTH_NAMES = [
 ];
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Optimized intensity calculation based on multiple activity factors
+const calculateOptimizedIntensity = (
+  count: number, 
+  intensity: number, 
+  totalSessions: number, 
+  maxDailySessions: number,
+  userActivityLevel: 'low' | 'medium' | 'high' | 'expert',
+  dateStr: string
+): number => {
+  // Base intensity from data
+  let optimizedIntensity = intensity;
+  
+  // Factor 1: Session count relative to user's typical activity
+  const sessionRatio = count / Math.max(maxDailySessions, 1);
+  
+  // Factor 2: User activity level adjustment
+  const activityMultipliers = {
+    'low': 1.2,      // Boost intensity for low-activity users
+    'medium': 1.0,   // No adjustment
+    'high': 0.8,     // Slightly reduce for high-activity users
+    'expert': 0.6    // More reduction for expert users
+  };
+  
+  // Factor 3: Recent activity bonus (if this is a recent day)
+  const today = new Date();
+  const isRecent = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const daysDiff = (today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
+    return daysDiff <= 7; // Last week
+  };
+  
+  // Calculate optimized intensity
+  let finalIntensity = Math.min(
+    Math.max(
+      Math.round(
+        (sessionRatio * 3 + intensity * 0.7) * activityMultipliers[userActivityLevel]
+      ),
+      0
+    ),
+    6 // Max intensity level
+  );
+  
+  // Apply recent activity bonus
+  if (count > 0 && isRecent(dateStr)) {
+    finalIntensity = Math.min(finalIntensity + 1, 6);
+  }
+  
+  return finalIntensity;
+};
 
 export default function Heatmap({ 
   data, 
@@ -47,7 +99,27 @@ export default function Heatmap({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
-  // Transform raw data into grid format
+  // Determine user activity level based on their data
+  const getUserActivityLevel = useMemo(() => {
+    const totalSessions = data.total_sessions;
+    const activeDays = data.data.filter(d => d.count > 0).length;
+    const totalDays = data.data.length;
+    const averageSessionsPerDay = totalSessions / Math.max(totalDays, 1);
+    const maxDailySessions = Math.max(...data.data.map(d => d.count), 0);
+    
+    // Activity level classification
+    if (averageSessionsPerDay >= 5 || maxDailySessions >= 10) {
+      return 'expert';
+    } else if (averageSessionsPerDay >= 3 || maxDailySessions >= 6) {
+      return 'high';
+    } else if (averageSessionsPerDay >= 1.5 || maxDailySessions >= 3) {
+      return 'medium';
+    } else {
+      return 'low';
+    }
+  }, [data]);
+
+  // Transform raw data into grid format with optimized intensity
   const gridData = useMemo(() => {
     const startDate = new Date(data.start_date);
     const endDate = new Date(data.end_date);
@@ -59,6 +131,9 @@ export default function Heatmap({
     data.data.forEach(item => {
       dataMap.set(item.date, item);
     });
+
+    // Calculate max daily sessions for intensity optimization
+    const maxDailySessions = Math.max(...data.data.map(d => d.count), 1);
 
     // Generate all dates in range
     const days: DayData[] = [];
@@ -74,11 +149,23 @@ export default function Heatmap({
     while (processDate <= endDate) {
       const dateStr = processDate.toISOString().split('T')[0];
       const dayData = dataMap.get(dateStr);
+      const count = dayData?.count || 0;
+      const originalIntensity = dayData?.intensity || 0;
+      
+      // Calculate optimized intensity
+      const optimizedIntensity = calculateOptimizedIntensity(
+        count,
+        originalIntensity,
+        data.total_sessions,
+        maxDailySessions,
+        getUserActivityLevel,
+        dateStr
+      );
       
       days.push({
         date: dateStr,
-        count: dayData?.count || 0,
-        intensity: dayData?.intensity || 0,
+        count,
+        intensity: optimizedIntensity,
         dayOfWeek: processDate.getDay(),
         weekIndex,
         month: MONTH_NAMES[processDate.getMonth()],
@@ -96,7 +183,7 @@ export default function Heatmap({
     }
 
     return days;
-  }, [data]);
+  }, [data, getUserActivityLevel]);
 
   // Group data by weeks for rendering
   const weeks = useMemo(() => {
@@ -177,12 +264,31 @@ export default function Heatmap({
     };
   }, []);
 
-  // Calculate statistics
+  // Calculate enhanced statistics with activity insights
   const stats = useMemo(() => {
     const totalDays = gridData.filter(d => d.date).length;
     const activeDays = gridData.filter(d => d.count > 0).length;
     const totalSessions = gridData.reduce((sum, d) => sum + d.count, 0);
     const averageSessions = totalSessions / Math.max(totalDays, 1);
+    const maxDailySessions = Math.max(...gridData.map(d => d.count), 0);
+    
+    // Calculate activity consistency
+    const consistency = activeDays / Math.max(totalDays, 1) * 100;
+    
+    // Calculate intensity distribution
+    const intensityDistribution = INTENSITY_COLORS.map((_, level) => 
+      gridData.filter(d => d.intensity === level).length
+    );
+    
+    // Calculate recent activity (last 7 days)
+    const recentDays = gridData.filter(d => {
+      if (!d.date) return false;
+      const date = new Date(d.date);
+      const today = new Date();
+      const daysDiff = (today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 7;
+    });
+    const recentSessions = recentDays.reduce((sum, d) => sum + d.count, 0);
     
     return {
       totalSessions: data.total_sessions,
@@ -191,33 +297,77 @@ export default function Heatmap({
       averageSessions: Math.round(averageSessions * 10) / 10,
       currentStreak: data.current_streak,
       longestStreak: data.longest_streak,
+      maxDailySessions,
+      consistency: Math.round(consistency * 10) / 10,
+      activityLevel: getUserActivityLevel,
+      recentSessions,
+      intensityDistribution,
     };
-  }, [data, gridData]);
+  }, [data, gridData, getUserActivityLevel]);
 
   const cellSize = compact ? 'w-2.5 h-2.5' : 'w-3 h-3';
   const gap = compact ? 'gap-0.5' : 'gap-1';
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Header with Stats */}
+      {/* Header with Enhanced Stats */}
       {showStats && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-center space-x-1">
-              <Target className="w-4 h-4" />
-              <span>{stats.totalSessions} sessions</span>
+        <div className="space-y-4">
+          {/* Primary Stats */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center space-x-1">
+                <Target className="w-4 h-4" />
+                <span>{stats.totalSessions} sessions</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Calendar className="w-4 h-4" />
+                <span>{stats.activeDays}/{stats.totalDays} days active</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Flame className="w-4 h-4" />
+                <span>{stats.currentStreak} day streak</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <TrendingUp className="w-4 h-4" />
+                <span>{stats.averageSessions} avg/day</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1">
-              <Calendar className="w-4 h-4" />
-              <span>{stats.activeDays}/{stats.totalDays} days active</span>
+          </div>
+          
+          {/* Activity Level & Enhanced Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Activity Level</div>
+              <div className={`font-semibold ${
+                stats.activityLevel === 'expert' ? 'text-purple-600 dark:text-purple-400' :
+                stats.activityLevel === 'high' ? 'text-green-600 dark:text-green-400' :
+                stats.activityLevel === 'medium' ? 'text-blue-600 dark:text-blue-400' :
+                'text-gray-600 dark:text-gray-400'
+              }`}>
+                {stats.activityLevel.charAt(0).toUpperCase() + stats.activityLevel.slice(1)}
+              </div>
             </div>
-            <div className="flex items-center space-x-1">
-              <Flame className="w-4 h-4" />
-              <span>{stats.currentStreak} day streak</span>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Consistency</div>
+              <div className="font-semibold text-gray-900 dark:text-white">
+                {stats.consistency}%
+              </div>
             </div>
-            <div className="flex items-center space-x-1">
-              <TrendingUp className="w-4 h-4" />
-              <span>{stats.averageSessions} avg/day</span>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Best Day</div>
+              <div className="font-semibold text-gray-900 dark:text-white">
+                {stats.maxDailySessions} sessions
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">This Week</div>
+              <div className="font-semibold text-gray-900 dark:text-white">
+                {stats.recentSessions} sessions
+              </div>
             </div>
           </div>
         </div>
@@ -301,20 +451,31 @@ export default function Heatmap({
         )}
       </div>
 
-      {/* Legend */}
+      {/* Enhanced Legend */}
       {showLegend && (
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span>Less</span>
-          <div className={`flex ${gap}`}>
-            {INTENSITY_COLORS.map((color, index) => (
-              <div
-                key={index}
-                className={`${cellSize} ${color} rounded-sm border border-gray-200 dark:border-gray-600`}
-                title={`Intensity level ${index}`}
-              />
-            ))}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>Less active</span>
+            <div className={`flex ${gap}`}>
+              {INTENSITY_COLORS.map((color, index) => (
+                <div
+                  key={index}
+                  className={`${cellSize} ${color} rounded-sm border border-gray-200 dark:border-gray-600`}
+                  title={`Intensity level ${index}: ${index === 0 ? 'No activity' : 
+                    index === 1 ? 'Very low activity' :
+                    index === 2 ? 'Low activity' :
+                    index === 3 ? 'Medium activity' :
+                    index === 4 ? 'High activity' :
+                    index === 5 ? 'Very high activity' :
+                    'Extremely high activity'}`}
+                />
+              ))}
+            </div>
+            <span>More active</span>
           </div>
-          <span>More</span>
+          <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Optimized for {stats.activityLevel} activity level • Recent activity gets bonus intensity
+          </div>
         </div>
       )}
 
@@ -420,7 +581,6 @@ export default function Heatmap({
 
 // Hook for fetching heatmap data
 export function useHeatmapData(startDate?: string, endDate?: string) {
-  const { getHeatmapData } = useStats();
   const [data, setData] = useState<HeatmapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -430,14 +590,24 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
       setLoading(true);
       setError(null);
       
-      const response = await getHeatmapData({ start_date: startDate, end_date: endDate });
-      setData(response);
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('start_date', startDate);
+      if (endDate) queryParams.append('end_date', endDate);
+      
+      const response = await fetch(`/api/stats/heatmap?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch heatmap data');
+      }
+      
+      const result = await response.json();
+      setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch heatmap data'));
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, getHeatmapData]);
+  }, [startDate, endDate]);
 
   React.useEffect(() => {
     fetchData();
