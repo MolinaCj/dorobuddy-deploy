@@ -24,14 +24,14 @@
 
 /* Theme-specific styles with proper theme colors */
 .theme-nature {
-  --background: #f0f9f0;
-  --foreground: #1f2937;
-  --card-bg: #e8f5e8;
-  --card-border: #c3e6c3;
+  --background: #bbf7d0;
+  --foreground: #14532d;
+  --card-bg: #86efac;
+  --card-border: #4ade80;
   --input-bg: #ffffff;
-  --button-bg: var(--theme-primary);
-  --button-hover: #047857;
-  --accent-bg: #f0f9f0;
+  --button-bg: #22c55e;
+  --button-hover: #16a34a;
+  --accent-bg: #bbf7d0;
 }
 
 .theme-sunset {
@@ -46,25 +46,25 @@
 }
 
 .theme-ocean {
-  --background: #f0f9ff;
-  --foreground: #1f2937;
-  --card-bg: #dbeafe;
-  --card-border: #93c5fd;
+  --background: #bae6fd;
+  --foreground: #0c4a6e;
+  --card-bg: #7dd3fc;
+  --card-border: #38bdf8;
   --input-bg: #ffffff;
-  --button-bg: var(--theme-primary);
+  --button-bg: #0ea5e9;
   --button-hover: #0284c7;
-  --accent-bg: #f0f9ff;
+  --accent-bg: #bae6fd;
 }
 
 .theme-lavender {
-  --background: #faf5ff;
-  --foreground: #1f2937;
-  --card-bg: #f3e8ff;
-  --card-border: #d8b4fe;
+  --background: #f3e8ff;
+  --foreground: #4c1d95;
+  --card-bg: #e9d5ff;
+  --card-border: #c4b5fd;
   --input-bg: #ffffff;
-  --button-bg: var(--theme-primary);
-  --button-hover: #7c3aed;
-  --accent-bg: #faf5ff;
+  --button-bg: #a78bfa;
+  --button-hover: #8b5cf6;
+  --accent-bg: #f3e8ff;
 }
 
 /* Dark theme overrides with better contrast */
@@ -219,6 +219,20 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+}
+
+/* Simple pastel theme backgrounds */
+.theme-ocean body {
+  background: #bae6fd;
+}
+
+.theme-lavender body {
+  background: #f3e8ff;
+}
+
+.theme-nature body {
+  background: #bbf7d0;
 }
 
 /* Universal theme application - affects ALL elements */
@@ -295,3 +309,5 @@ body {
 .theme-lavender .border-gray-200 { border-color: var(--card-border) !important; }
 .theme-lavender .border-gray-300 { border-color: var(--card-border) !important; }
 .theme-lavender .border-gray-700 { border-color: var(--card-border) !important; }
+
+/* Simple pastel theme styling */

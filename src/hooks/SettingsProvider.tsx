@@ -92,10 +92,96 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (!settings) return
     const root = document.documentElement
     const themeId = settings.theme || 'default'
-    // Toggle Tailwind dark mode for components using `dark:` variants
-    root.classList.toggle('dark', themeId === 'dark')
-    // Expose theme identifier for CSS variables-based theming
+    
+    // Remove all existing theme classes
+    root.classList.remove('dark', 'theme-nature', 'theme-sunset', 'theme-ocean', 'theme-lavender')
+    
+    // Apply theme-specific classes
+    if (themeId === 'dark') {
+      root.classList.add('dark')
+    } else if (themeId !== 'default') {
+      root.classList.add(`theme-${themeId}`)
+    }
+    
+    // Set data-theme attribute for CSS variable theming
     root.setAttribute('data-theme', themeId)
+    
+    // Apply theme colors as CSS custom properties
+    const themeColors = {
+      default: ['#3B82F6', '#EF4444', '#10B981'],
+      dark: ['#1F2937', '#374151', '#4B5563'],
+      nature: ['#059669', '#0D9488', '#047857'],
+      sunset: ['#F59E0B', '#EF4444', '#DC2626'],
+      ocean: ['#0EA5E9', '#0284C7', '#0369A1'],
+      lavender: ['#8B5CF6', '#A855F7', '#9333EA']
+    }
+    
+    const colors = themeColors[themeId as keyof typeof themeColors] || themeColors.default
+    root.style.setProperty('--theme-primary', colors[0])
+    root.style.setProperty('--theme-secondary', colors[1])
+    root.style.setProperty('--theme-accent', colors[2])
+    
+    // Apply comprehensive theme variables with subtle theme colors
+    const themeVariables = {
+      default: {
+        background: '#ffffff',
+        foreground: '#171717',
+        cardBg: '#f9fafb',
+        cardBorder: '#e5e7eb',
+        inputBg: '#ffffff',
+        accentBg: '#f3f4f6'
+      },
+      dark: {
+        background: '#0f0f0f',
+        foreground: '#e5e5e5',
+        cardBg: '#1a1a1a',
+        cardBorder: '#404040',
+        inputBg: '#262626',
+        accentBg: '#1a1a1a'
+      },
+      nature: {
+        background: '#f0f9f0',
+        foreground: '#1f2937',
+        cardBg: '#e8f5e8',
+        cardBorder: '#c3e6c3',
+        inputBg: '#ffffff',
+        accentBg: '#f0f9f0'
+      },
+      sunset: {
+        background: '#fff7ed',
+        foreground: '#1f2937',
+        cardBg: '#fed7aa',
+        cardBorder: '#fdba74',
+        inputBg: '#ffffff',
+        accentBg: '#fff1e6'
+      },
+      ocean: {
+        background: '#f0f9ff',
+        foreground: '#1f2937',
+        cardBg: '#dbeafe',
+        cardBorder: '#93c5fd',
+        inputBg: '#ffffff',
+        accentBg: '#f0f9ff'
+      },
+      lavender: {
+        background: '#faf5ff',
+        foreground: '#1f2937',
+        cardBg: '#f3e8ff',
+        cardBorder: '#d8b4fe',
+        inputBg: '#ffffff',
+        accentBg: '#faf5ff'
+      }
+    }
+    
+    const themeVars = themeVariables[themeId as keyof typeof themeVariables] || themeVariables.default
+    root.style.setProperty('--background', themeVars.background)
+    root.style.setProperty('--foreground', themeVars.foreground)
+    root.style.setProperty('--card-bg', themeVars.cardBg)
+    root.style.setProperty('--card-border', themeVars.cardBorder)
+    root.style.setProperty('--input-bg', themeVars.inputBg)
+    root.style.setProperty('--accent-bg', themeVars.accentBg)
+    
+    console.log('Theme applied:', themeId, 'Colors:', colors)
   }, [settings?.theme])
 
   // Sync Spotify connection status with settings
