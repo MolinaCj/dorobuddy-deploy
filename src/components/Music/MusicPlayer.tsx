@@ -31,7 +31,7 @@ export default function MusicPlayer({
   sessionActive = false,
   onPlayStateChange 
 }: MusicPlayerProps) {
-  const { settings } = useSettings();
+  const { settings, syncSpotifyStatus } = useSettings();
   const { 
     isConnected, 
     connect, 
@@ -160,9 +160,22 @@ export default function MusicPlayer({
       setShowSpotifyConnect(true);
       await connect();
       setShowSpotifyConnect(false);
+      // Sync with settings
+      await syncSpotifyStatus(true);
     } catch (error) {
       console.error('Failed to connect to Spotify:', error);
       setShowSpotifyConnect(false);
+    }
+  };
+
+  // Handle Spotify disconnection
+  const handleSpotifyDisconnect = async () => {
+    try {
+      await disconnect();
+      // Sync with settings
+      await syncSpotifyStatus(false);
+    } catch (error) {
+      console.error('Failed to disconnect from Spotify:', error);
     }
   };
 
@@ -348,7 +361,7 @@ const handlePrevious = useCallback(async () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-green-600">Spotify Connected</span>
                 <button
-                  onClick={disconnect}
+                  onClick={handleSpotifyDisconnect}
                   className="text-xs text-gray-500 hover:text-gray-700"
                 >
                   Disconnect

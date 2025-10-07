@@ -7,6 +7,7 @@ import {
 import { UserSettings, UpdateSettingsRequest } from '@/types/api';
 import { useSettings } from '@/hooks/useSettings';
 import { useAudio } from '@/hooks/useAudio';
+import { useSpotify } from '@/hooks/useSpotify';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -46,8 +47,9 @@ const SOUND_OPTIONS = [
 ];
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, updateSettings, loading } = useSettings();
+  const { settings, updateSettings, loading, syncSpotifyStatus } = useSettings();
   const { playSound, preloadSound } = useAudio();
+  const { isConnected, connect, disconnect } = useSpotify();
   
   const [activeTab, setActiveTab] = useState('timer');
   const [formData, setFormData] = useState<UpdateSettingsRequest>({});
@@ -75,6 +77,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       });
     }
   }, [settings]);
+
+  // Sync Spotify connection status with form data
+  useEffect(() => {
+    if (settings) {
+      setFormData(prev => ({
+        ...prev,
+        spotify_enabled: isConnected
+      }));
+    }
+  }, [isConnected, settings]);
 
   // Handle input changes
   const handleInputChange = (field: keyof UpdateSettingsRequest, value: any) => {
@@ -105,6 +117,30 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 };
 
+
+  // Handle Spotify connection
+  const handleSpotifyConnect = async () => {
+    try {
+      await connect();
+      await syncSpotifyStatus(true);
+      setFormData(prev => ({ ...prev, spotify_enabled: true }));
+      setHasChanges(true);
+    } catch (error) {
+      console.error('Failed to connect to Spotify:', error);
+    }
+  };
+
+  // Handle Spotify disconnection
+  const handleSpotifyDisconnect = async () => {
+    try {
+      await disconnect();
+      await syncSpotifyStatus(false);
+      setFormData(prev => ({ ...prev, spotify_enabled: false }));
+      setHasChanges(true);
+    } catch (error) {
+      console.error('Failed to disconnect from Spotify:', error);
+    }
+  };
 
   // Handle reset to defaults
   const handleReset = () => {
@@ -693,12 +729,29 @@ const handleSubmit = async (e: React.FormEvent) => {
 
                     {formData.spotify_enabled && (
                       <div className="space-y-3">
-                        <button
-                          type="button"
-                          className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                        >
-                          Connect to Spotify
-                        </button>
+                        {isConnected ? (
+                          <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-sm text-green-700 dark:text-green-300">Spotify Connected</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleSpotifyDisconnect}
+                              className="text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              Disconnect
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleSpotifyConnect}
+                            className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                          >
+                            Connect to Spotify
+                          </button>
+                        )}
                         
                         <div className="text-xs text-gray-500">
                           <p>• Requires Spotify Premium for full functionality</p>
