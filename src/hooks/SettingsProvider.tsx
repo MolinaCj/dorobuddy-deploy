@@ -11,6 +11,7 @@ interface SettingsContextType {
   error: Error | null
   updateSettings: (updates: UpdateSettingsRequest) => Promise<UserSettings>
   refetch: () => Promise<void>
+  syncSpotifyStatus: (isConnected: boolean) => Promise<void>
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
@@ -97,12 +98,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     root.setAttribute('data-theme', themeId)
   }, [settings?.theme])
 
+  // Sync Spotify connection status with settings
+  const syncSpotifyStatus = async (isConnected: boolean) => {
+    if (settings && settings.spotify_enabled !== isConnected) {
+      try {
+        await updateSettings({ spotify_enabled: isConnected })
+        console.log('Spotify status synced with settings:', isConnected)
+      } catch (error) {
+        console.error('Failed to sync Spotify status:', error)
+      }
+    }
+  }
+
   const value: SettingsContextType = {
     settings,
     loading,
     error,
     updateSettings,
     refetch: fetchSettings,
+    syncSpotifyStatus,
   }
 
   return (
