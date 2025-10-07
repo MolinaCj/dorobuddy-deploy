@@ -126,10 +126,14 @@ async function handleNavigationRequest(request) {
     // Try network first for navigation
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+    // Cache successful, complete responses only
+    if (networkResponse.ok && networkResponse.status !== 206) {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.warn('[SW] Failed to cache navigation:', request.url, cacheError);
+      }
     }
     
     return networkResponse;
@@ -159,10 +163,14 @@ async function handleApiRequest(request) {
       )
     ]);
 
-    // Cache successful GET responses
-    if (networkResponse.ok && request.method === 'GET') {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+    // Cache successful, complete GET responses only
+    if (networkResponse.ok && networkResponse.status !== 206 && request.method === 'GET') {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.warn('[SW] Failed to cache API response:', request.url, cacheError);
+      }
     }
 
     return networkResponse;
@@ -211,10 +219,29 @@ async function handleStaticAsset(request) {
     // Try network
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+    // Only cache successful, complete responses (not partial 206 responses)
+    if (networkResponse.ok && networkResponse.status !== 206) {
+      // Check if response is complete (not a partial response)
+      const contentLength = networkResponse.headers.get('content-length');
+      const contentRange = networkResponse.headers.get('content-range');
+      const acceptRanges = networkResponse.headers.get('accept-ranges');
+      
+      // Only cache if it's not a partial response
+      // Skip caching if:
+      // 1. Has content-range header (partial response)
+      // 2. Has accept-ranges header (supports partial requests)
+      // 3. Content-length is 0 (empty response)
+      if (!contentRange && !acceptRanges && contentLength && contentLength !== '0') {
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, networkResponse.clone());
+        } catch (cacheError) {
+          console.warn('[SW] Failed to cache asset:', request.url, cacheError);
+          // Continue without caching
+        }
+      } else {
+        console.log('[SW] Skipping cache for partial response:', request.url);
+      }
     }
 
     return networkResponse;
@@ -235,9 +262,14 @@ async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+    // Only cache complete, successful responses
+    if (networkResponse.ok && networkResponse.status !== 206) {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.warn('[SW] Failed to cache response:', request.url, cacheError);
+      }
     }
     
     return networkResponse;
