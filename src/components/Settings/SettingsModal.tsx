@@ -709,32 +709,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                     )}
                   </div>
 
-                  {/* Ambient Sounds */}
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                      Built-in Ambient Sounds
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[
-                        { id: 'deep', name: 'Deep Focus', icon: '🎧' },
-                        { id: 'rain', name: 'Rain', icon: '🌧️' },
-                        { id: 'forest', name: 'Forest', icon: '🌲' },
-                        { id: 'ocean', name: 'Ocean Waves', icon: '🌊' },
-                        { id: 'coffee', name: 'Coffee Shop', icon: '☕' },
-                        { id: 'fire', name: 'Fireplace', icon: '🔥' },
-                        { id: 'white', name: 'White Noise', icon: '📻' },
-                      ].map(sound => (
-                        <label key={sound.id} className="flex items-center space-x-3 p-2 border border-gray-100 rounded-lg">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 text-blue-500 border-gray-300 rounded"
-                          />
-                          <span className="text-lg">{sound.icon}</span>
-                          <span className="text-sm">{sound.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               )}
             </form>
