@@ -19,16 +19,21 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [settings, setSettings] = useState<UserSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Start as false - don't block UI
   const [error, setError] = useState<Error | null>(null)
 
   const supabase = createBrowserClient()
 
-  // Fetch user settings
+  // Fetch user settings (with caching)
   const fetchSettings = async () => {
     if (!user) {
       setLoading(false)
       setSettings(null)
+      return
+    }
+
+    // Check if we already have settings cached
+    if (settings) {
       return
     }
 

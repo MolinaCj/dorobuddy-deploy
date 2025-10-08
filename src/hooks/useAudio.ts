@@ -31,15 +31,15 @@ const AMBIENT_SOUNDS: AudioClip[] = [
 export function useAudio() {
   const { settings } = useSettings()
   const [audioMap, setAudioMap] = useState<Map<string, HTMLAudioElement>>(new Map())
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Start as false - don't block UI
   const [currentAmbientSound, setCurrentAmbientSound] = useState<string | null>(null)
 
-  // Preload audio files
+  // Preload audio files (non-blocking)
   const preloadSounds = useCallback(async () => {
     try {
-      setLoading(true)
-      const allSounds = [...DEFAULT_SOUNDS, ...AMBIENT_SOUNDS]
-      const audioPromises = allSounds.map(sound => {
+      // Only preload essential sounds first (notification sounds)
+      const essentialSounds = DEFAULT_SOUNDS
+      const audioPromises = essentialSounds.map(sound => {
         return new Promise<void>((resolve, reject) => {
           const audio = new Audio()
           audio.preload = 'auto'
@@ -52,10 +52,19 @@ export function useAudio() {
       })
 
       await Promise.allSettled(audioPromises) // Don't fail if some sounds don't load
+      
+      // Preload ambient sounds in background (non-blocking)
+      setTimeout(() => {
+        AMBIENT_SOUNDS.forEach(sound => {
+          const audio = new Audio()
+          audio.preload = 'auto'
+          audio.src = sound.url
+          setAudioMap(prev => new Map(prev).set(sound.id, audio))
+        })
+      }, 100) // Small delay to not block UI
+      
     } catch (error) {
       console.error('Error preloading sounds:', error)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
