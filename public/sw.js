@@ -90,6 +90,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip problematic audio files that might cause issues
+  if (pathname.includes('/audio/') && (
+    pathname.includes('fire.mp3') || // Old incorrect path
+    pathname.includes('deep-focus/deep-focus.mp3') // Old incorrect path
+  )) {
+    console.log('[SW] Skipping problematic audio file:', request.url);
+    return;
+  }
+
   event.respondWith(
     (async () => {
       try {
@@ -107,7 +116,11 @@ self.addEventListener('fetch', (event) => {
         if (pathname.startsWith('/icons/') || 
             pathname.startsWith('/audio/') || 
             pathname.includes('.')) {
-          return await handleStaticAsset(request);
+          return await handleStaticAsset(request).catch(assetError => {
+            console.warn('[SW] Static asset failed:', request.url, assetError);
+            // Return a 404 response instead of throwing
+            return new Response('Asset not found', { status: 404 });
+          });
         }
 
         // Default: try network first, fallback to cache
@@ -216,8 +229,11 @@ async function handleStaticAsset(request) {
       return cachedResponse;
     }
 
-    // Try network
-    const networkResponse = await fetch(request);
+    // Try network with better error handling
+    const networkResponse = await fetch(request).catch(fetchError => {
+      console.warn('[SW] Network fetch failed for:', request.url, fetchError);
+      throw fetchError;
+    });
     
     // Only cache successful, complete responses (not partial 206 responses)
     if (networkResponse.ok && networkResponse.status !== 206) {
