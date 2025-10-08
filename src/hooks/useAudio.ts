@@ -19,12 +19,12 @@ const DEFAULT_SOUNDS: AudioClip[] = [
 ]
 
 const AMBIENT_SOUNDS: AudioClip[] = [
-  { id: 'deep', name: 'Deep Focus', url: '/audio/deep-focus/deep-focus.mp3' },
+  { id: 'deep', name: 'Deep Focus', url: '/audio/ambient/deep-focus.mp3' },
   { id: 'rain', name: 'Rain', url: '/audio/ambient/rain.wav' },
   { id: 'forest', name: 'Forest', url: '/audio/ambient/forest.mp3' },
   { id: 'ocean', name: 'Ocean Waves', url: '/audio/ambient/ocean-waves.mp3' },
   { id: 'coffee', name: 'Coffee Shop', url: '/audio/ambient/cafe.mp3' },
-  { id: 'fire', name: 'Fireplace', url: '/audio/ambient/fire.mp3' },
+  { id: 'fire', name: 'Fireplace', url: '/audio/ambient/fireplace.mp3' },
   { id: 'white', name: 'White Noise', url: '/audio/ambient/white-noise.mp3' },
 ]
 
