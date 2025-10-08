@@ -1,5 +1,5 @@
 // public/sw.js - DoroBuddy Service Worker
-const CACHE_NAME = 'dorobuddy-v1.0.1';
+const CACHE_NAME = 'dorobuddy-v1.0.2';
 const OFFLINE_URL = '/offline.html';
 
 // Critical assets to cache immediately
@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip problematic audio files that might cause issues
+  // Skip problematic files that might cause issues
   if (pathname.includes('/audio/') && (
     pathname.includes('fire.mp3') || // Old incorrect path
     pathname.includes('deep-focus/deep-focus.mp3') || // Old incorrect path
@@ -96,6 +96,12 @@ self.addEventListener('fetch', (event) => {
     pathname.includes('message-notif.mp3') // Temporarily skip problematic files
   )) {
     console.log('[SW] Skipping problematic audio file:', request.url);
+    return;
+  }
+
+  // Skip screenshot files that don't exist
+  if (pathname.includes('/screenshots/')) {
+    console.log('[SW] Skipping screenshot file:', request.url);
     return;
   }
 
