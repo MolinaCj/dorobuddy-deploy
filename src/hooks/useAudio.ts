@@ -31,37 +31,23 @@ const AMBIENT_SOUNDS: AudioClip[] = [
 export function useAudio() {
   const { settings } = useSettings()
   const [audioMap, setAudioMap] = useState<Map<string, HTMLAudioElement>>(new Map())
-  const [loading, setLoading] = useState(false) // Start as false - don't block UI
+  const [loading, setLoading] = useState(false) // Always false - never block UI
   const [currentAmbientSound, setCurrentAmbientSound] = useState<string | null>(null)
 
-  // Preload audio files (non-blocking)
+  // Preload audio files (completely non-blocking)
   const preloadSounds = useCallback(async () => {
     try {
-      // Only preload essential sounds first (notification sounds)
-      const essentialSounds = DEFAULT_SOUNDS
-      const audioPromises = essentialSounds.map(sound => {
-        return new Promise<void>((resolve, reject) => {
-          const audio = new Audio()
-          audio.preload = 'auto'
-          audio.addEventListener('canplaythrough', () => resolve())
-          audio.addEventListener('error', () => reject())
-          audio.src = sound.url
-          
-          setAudioMap(prev => new Map(prev).set(sound.id, audio))
-        })
-      })
-
-      await Promise.allSettled(audioPromises) // Don't fail if some sounds don't load
+      // Preload all sounds in background without waiting
+      const allSounds = [...DEFAULT_SOUNDS, ...AMBIENT_SOUNDS]
       
-      // Preload ambient sounds in background (non-blocking)
-      setTimeout(() => {
-        AMBIENT_SOUNDS.forEach(sound => {
-          const audio = new Audio()
-          audio.preload = 'auto'
-          audio.src = sound.url
-          setAudioMap(prev => new Map(prev).set(sound.id, audio))
-        })
-      }, 100) // Small delay to not block UI
+      allSounds.forEach(sound => {
+        const audio = new Audio()
+        audio.preload = 'auto'
+        audio.src = sound.url
+        
+        // Add to map immediately, don't wait for loading
+        setAudioMap(prev => new Map(prev).set(sound.id, audio))
+      })
       
     } catch (error) {
       console.error('Error preloading sounds:', error)

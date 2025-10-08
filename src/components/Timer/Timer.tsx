@@ -328,15 +328,13 @@ const switchMode = useCallback(
   const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
   const currentCyclePosition = state.sessionsCompleted % sessionsUntilLongBreak
 
-  // Show loading state only if both settings and audio are loading
-  if (settingsLoading || audioLoading) {
+  // Show loading state only if settings are loading (audio is non-blocking)
+  if (settingsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          {settingsLoading && audioLoading ? 'Loading timer...' : 
-           settingsLoading ? 'Loading settings...' : 
-           'Loading audio...'}
+          Loading timer...
         </div>
       </div>
     )

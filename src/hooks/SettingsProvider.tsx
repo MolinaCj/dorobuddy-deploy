@@ -24,7 +24,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const supabase = createBrowserClient()
 
-  // Fetch user settings (with caching)
+  // Fetch user settings (with caching and mobile optimization)
   const fetchSettings = async () => {
     if (!user) {
       setLoading(false)
@@ -41,6 +41,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
       
+      // Add timeout for mobile devices
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
+      )
+      
       // Check if user is properly authenticated by getting current session
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
@@ -50,7 +55,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const response = await fetch('/api/settings')
+      const response = await Promise.race([
+        fetch('/api/settings'),
+        timeoutPromise
+      ]) as Response
       
       if (!response.ok) {
         if (response.status === 401) {
