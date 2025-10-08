@@ -12,11 +12,8 @@ const PRECACHE_ASSETS = [
   '/icons/icon-512x512.svg',
 ];
 
-// Assets to cache on first access
+// Assets to cache on first access (removed audio files to prevent issues)
 const RUNTIME_CACHE_URLS = [
-  // Audio files
-  '/audio/sounds/',
-  '/audio/ambient/',
   // API routes (for offline fallback)
   '/api/tasks',
   '/api/sessions',
@@ -93,7 +90,10 @@ self.addEventListener('fetch', (event) => {
   // Skip problematic audio files that might cause issues
   if (pathname.includes('/audio/') && (
     pathname.includes('fire.mp3') || // Old incorrect path
-    pathname.includes('deep-focus/deep-focus.mp3') // Old incorrect path
+    pathname.includes('deep-focus/deep-focus.mp3') || // Old incorrect path
+    pathname.includes('ding.mp3') || // Temporarily skip problematic files
+    pathname.includes('gong.mp3') || // Temporarily skip problematic files
+    pathname.includes('message-notif.mp3') // Temporarily skip problematic files
   )) {
     console.log('[SW] Skipping problematic audio file:', request.url);
     return;
@@ -118,7 +118,14 @@ self.addEventListener('fetch', (event) => {
             pathname.includes('.')) {
           return await handleStaticAsset(request).catch(assetError => {
             console.warn('[SW] Static asset failed:', request.url, assetError);
-            // Return a 404 response instead of throwing
+            // For audio files, return a silent response instead of 404
+            if (pathname.includes('/audio/')) {
+              return new Response('', { 
+                status: 200, 
+                headers: { 'Content-Type': 'audio/mpeg' } 
+              });
+            }
+            // Return a 404 response for other assets
             return new Response('Asset not found', { status: 404 });
           });
         }
