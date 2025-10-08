@@ -19,7 +19,7 @@ interface TimerState {
   timeRemaining: number
   isActive: boolean
   sessionsCompleted: number
-  isReversed: boolean
+  // isReversed: boolean // Commented out reverse mode
 }
 
 export default function Timer({ selectedTaskId, onSessionComplete, onOpenSettings }: TimerProps) {
@@ -33,7 +33,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
     timeRemaining: 1500, // 25 minutes default
     isActive: false,
     sessionsCompleted: 0,
-    isReversed: false,
+    // isReversed: false, // Commented out reverse mode
   })
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -77,7 +77,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
           
           return {
             ...prev,
-            timeRemaining: prev.isReversed ? 0 : newDuration,
+            timeRemaining: newDuration, // Removed reverse mode logic
           }
         }
         return prev
@@ -97,7 +97,7 @@ const switchMode = useCallback(
       timeRemaining: getDuration(newMode), // now always fresh
       isActive: false,
       sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
-      // don't overwrite reverse here — just keep it as is
+      // Removed reverse mode logic
     }))
     hasCompletedRef.current = false
 
@@ -182,37 +182,25 @@ const switchMode = useCallback(
       return
     }
 
-    if (state.isReversed) {
-      // Reverse Pomodoro - count up from 0
-      startTimeRef.current = Date.now()
-      const startTime = Date.now()
+    // Normal Pomodoro - count down (reverse mode commented out)
+    startTimeRef.current = Date.now()
+    const targetTime = Date.now() + (state.timeRemaining * 1000)
 
-      intervalRef.current = setInterval(() => {
-        const now = Date.now()
-        const elapsed = Math.floor((now - startTime) / 1000)
-        setState(prev => ({ ...prev, timeRemaining: elapsed }))
-      }, 100)
-    } else {
-      // Normal Pomodoro - count down
-      startTimeRef.current = Date.now()
-      const targetTime = Date.now() + (state.timeRemaining * 1000)
+    intervalRef.current = setInterval(() => {
+      const now = Date.now()
+      const remaining = Math.ceil((targetTime - now) / 1000)
 
-      intervalRef.current = setInterval(() => {
-        const now = Date.now()
-        const remaining = Math.ceil((targetTime - now) / 1000)
-
-        if (remaining <= 0) {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current)
-            intervalRef.current = null
-          }
-          setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
-          handleTimerComplete()
-        } else {
-          setState(prev => ({ ...prev, timeRemaining: remaining }))
+      if (remaining <= 0) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
         }
-      }, 100)
-    }
+        setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
+        handleTimerComplete()
+      } else {
+        setState(prev => ({ ...prev, timeRemaining: remaining }))
+      }
+    }, 100)
 
     return () => {
       if (intervalRef.current) {
@@ -220,28 +208,28 @@ const switchMode = useCallback(
         intervalRef.current = null
       }
     }
-  }, [state.isActive, state.isReversed, handleTimerComplete])
+  }, [state.isActive, handleTimerComplete]) // Removed isReversed dependency
 
   // Toggle play/pause
   const toggleTimer = () => {
     setState(prev => ({ ...prev, isActive: !prev.isActive }))
   }
 
-  // Toggle reverse mode
-  const toggleReverse = () => {
-    setState(prev => {
-      const newDuration = getDuration(prev.mode)
-      const newIsReversed = !prev.isReversed
+  // Toggle reverse mode - COMMENTED OUT
+  // const toggleReverse = () => {
+  //   setState(prev => {
+  //     const newDuration = getDuration(prev.mode)
+  //     const newIsReversed = !prev.isReversed
       
-      return {
-        ...prev,
-        isReversed: newIsReversed,
-        timeRemaining: newIsReversed ? 0 : newDuration,
-        isActive: false,
-      }
-    })
-    hasCompletedRef.current = false
-  }
+  //     return {
+  //       ...prev,
+  //       isReversed: newIsReversed,
+  //       timeRemaining: newIsReversed ? 0 : newDuration,
+  //       isActive: false,
+  //     }
+  //   })
+  //   hasCompletedRef.current = false
+  // }
 
   // Skip to next session
   const skipSession = () => {
@@ -277,7 +265,7 @@ const switchMode = useCallback(
   const resetTimer = () => {
     setState(prev => ({
       ...prev,
-      timeRemaining: prev.isReversed ? 0 : getDuration(prev.mode),
+      timeRemaining: getDuration(prev.mode), // Removed reverse mode logic
       isActive: false,
     }))
     hasCompletedRef.current = false
@@ -290,7 +278,7 @@ const switchMode = useCallback(
       timeRemaining: getDuration('work'),
       isActive: false,
       sessionsCompleted: 0,
-      isReversed: false,
+      // isReversed: false, // Commented out reverse mode
     })
     hasCompletedRef.current = false
   }
@@ -304,10 +292,7 @@ const switchMode = useCallback(
 
   // Calculate progress percentage
   const getProgress = (): number => {
-    if (state.isReversed) {
-      // In reverse mode, progress is always 0 since we're just counting up
-      return 0
-    }
+    // Removed reverse mode logic - always calculate normal progress
     const total = getDuration(state.mode)
     return ((total - state.timeRemaining) / total) * 100
   }
@@ -365,11 +350,12 @@ const switchMode = useCallback(
               Working on selected task
             </p>
           )}
-          {state.isReversed && (
+          {/* Reverse mode indicator commented out */}
+          {/* {state.isReversed && (
             <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 rounded-full">
               Reverse Mode
             </span>
-          )}
+          )} */}
         </div>
       </div>
 
@@ -397,7 +383,7 @@ const switchMode = useCallback(
               strokeWidth="8"
               fill="none"
               strokeLinecap="round"
-              className={state.isReversed ? 'text-purple-500' : modeInfo.color}
+              className={modeInfo.color} // Removed reverse mode styling
               style={{
                 strokeDasharray: `${2 * Math.PI * 136}`,
                 strokeDashoffset: `${2 * Math.PI * 136 * (1 - getProgress() / 100)}`,
@@ -413,10 +399,7 @@ const switchMode = useCallback(
                 {formatTime(state.timeRemaining)}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                {state.isReversed 
-                  ? (state.isActive ? 'Counting Up...' : 'Paused') 
-                  : (state.isActive ? 'In Progress' : 'Paused')
-                }
+                {state.isActive ? 'In Progress' : 'Paused'} {/* Removed reverse mode text */}
               </div>
             </div>
           </div>
@@ -431,9 +414,7 @@ const switchMode = useCallback(
             p-6 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95
             ${state.isActive 
               ? 'bg-red-500 hover:bg-red-600 text-white' 
-              : state.isReversed
-                ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                : `${modeInfo.bgColor} hover:opacity-90 text-white`
+              : `${modeInfo.bgColor} hover:opacity-90 text-white`
             }
           `}
           aria-label={state.isActive ? 'Pause timer' : 'Start timer'}
@@ -445,16 +426,14 @@ const switchMode = useCallback(
           )}
         </button>
 
-        {!state.isReversed && (
-          <button
-            onClick={skipSession}
-            className="p-4 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition-colors"
-            aria-label="Skip to next session"
-            title="Skip to next session"
-          >
-            <SkipForward className="w-6 h-6" />
-          </button>
-        )}
+        <button
+          onClick={skipSession}
+          className="p-4 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition-colors"
+          aria-label="Skip to next session"
+          title="Skip to next session"
+        >
+          <SkipForward className="w-6 h-6" />
+        </button>
 
         <button
           onClick={resetTimer}
@@ -476,8 +455,8 @@ const switchMode = useCallback(
 
       </div>
 
-      {/* Reverse Mode Toggle */}
-      <div className="flex items-center justify-center">
+      {/* Reverse Mode Toggle - COMMENTED OUT */}
+      {/* <div className="flex items-center justify-center">
         <button
           onClick={toggleReverse}
           disabled={state.isActive}
@@ -495,7 +474,7 @@ const switchMode = useCallback(
           <span>🔄</span>
           <span>{state.isReversed ? 'Disable' : 'Enable'} Reverse Mode</span>
         </button>
-      </div>
+      </div> */}
 
       {/* Session Progress */}
       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
