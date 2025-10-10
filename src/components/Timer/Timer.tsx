@@ -138,14 +138,14 @@ const switchMode = useCallback(
       if (currentMode === 'work') {
         new Notification('Work Session Complete!', {
           body: 'Great job! Time for a break.',
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-192x192.png',
+          icon: '/icons/icon-192x192.svg',
+          badge: '/icons/icon-192x192.svg',
         })
       } else {
         new Notification('Break Complete!', {
           body: 'Break is over. Ready to focus?',
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-192x192.png',
+          icon: '/icons/icon-192x192.svg',
+          badge: '/icons/icon-192x192.svg',
         })
       }
     }

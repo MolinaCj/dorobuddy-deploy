@@ -33,7 +33,7 @@ export default function HomePage() {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Session Complete!', {
         body: 'Great work! Time for a break.',
-        icon: '/icons/icon-192x192.png',
+        icon: '/icons/icon-192x192.svg',
       })
     }
   }
