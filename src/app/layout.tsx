@@ -4,6 +4,9 @@ import { AuthProvider } from "@/hooks"  // ✅ clean import
 import { SettingsProvider } from "@/hooks/SettingsProvider"
 import InstallPrompt from "@/components/PWA/InstallPrompt"
 
+// Force dynamic rendering to avoid build-time Supabase access
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: "DoroBuddy - Pomodoro Timer",
   description: "A distraction-free Pomodoro timer with task management",
