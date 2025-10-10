@@ -45,6 +45,15 @@ export function useAudio() {
         audio.preload = 'auto'
         audio.src = sound.url
         
+        // Add error handling for individual audio files
+        audio.addEventListener('error', (e) => {
+          console.warn(`Failed to load audio file: ${sound.url}`, e)
+        })
+        
+        audio.addEventListener('canplaythrough', () => {
+          console.log(`Successfully loaded audio: ${sound.url}`)
+        })
+        
         // Add to map immediately, don't wait for loading
         setAudioMap(prev => new Map(prev).set(sound.id, audio))
       })
@@ -67,7 +76,15 @@ export function useAudio() {
       audio.currentTime = 0
       audio.volume = Math.min(1, Math.max(0, volume * (settings?.master_volume || 1)))
       
-      await audio.play()
+      // Try to play, with fallback if audio isn't ready
+      try {
+        await audio.play()
+      } catch (playError) {
+        console.warn(`Failed to play ${soundId}, trying to reload:`, playError)
+        // Try to reload the audio and play again
+        audio.load()
+        await audio.play()
+      }
     } catch (error) {
       console.error('Error playing sound:', error)
     }

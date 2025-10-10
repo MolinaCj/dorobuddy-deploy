@@ -92,7 +92,6 @@ self.addEventListener('fetch', (event) => {
     pathname.includes('fire.mp3') || // Old incorrect path
     pathname.includes('deep-focus/deep-focus.mp3') || // Old incorrect path
     pathname.includes('ding.mp3') || // Temporarily skip problematic files
-    pathname.includes('gong.mp3') || // Temporarily skip problematic files
     pathname.includes('message-notif.mp3') // Temporarily skip problematic files
   )) {
     console.log('[SW] Skipping problematic audio file:', request.url);
