@@ -18,6 +18,11 @@ const DEFAULT_SOUNDS: AudioClip[] = [
   { id: 'message', name: 'Message Notification', url: '/audio/sounds/message-notif.mp3' },
 ]
 
+// Fallback sounds for when primary sounds fail
+const FALLBACK_SOUNDS: AudioClip[] = [
+  { id: 'gong', name: 'Gong', url: '/audio/sounds/bell.wav' }, // Use bell as fallback for gong
+]
+
 const AMBIENT_SOUNDS: AudioClip[] = [
   { id: 'deep', name: 'Deep Focus', url: '/audio/ambient/deep-focus.mp3' },
   { id: 'rain', name: 'Rain', url: '/audio/ambient/rain.wav' },
@@ -41,21 +46,34 @@ export function useAudio() {
       const allSounds = [...DEFAULT_SOUNDS, ...AMBIENT_SOUNDS]
       
       allSounds.forEach(sound => {
-        const audio = new Audio()
-        audio.preload = 'auto'
-        audio.src = sound.url
-        
-        // Add error handling for individual audio files
-        audio.addEventListener('error', (e) => {
-          console.warn(`Failed to load audio file: ${sound.url}`, e)
-        })
-        
-        audio.addEventListener('canplaythrough', () => {
-          console.log(`Successfully loaded audio: ${sound.url}`)
-        })
-        
-        // Add to map immediately, don't wait for loading
-        setAudioMap(prev => new Map(prev).set(sound.id, audio))
+        try {
+          const audio = new Audio()
+          audio.preload = 'auto'
+          
+          // Add error handling for individual audio files
+          audio.addEventListener('error', (e) => {
+            console.warn(`Failed to load audio file: ${sound.url}`, e)
+            console.warn(`Audio element readyState: ${audio.readyState}`)
+            console.warn(`Audio element networkState: ${audio.networkState}`)
+            console.warn(`Audio element src: ${audio.src}`)
+          })
+          
+          audio.addEventListener('canplaythrough', () => {
+            console.log(`Successfully loaded audio: ${sound.url}`)
+          })
+          
+          audio.addEventListener('loadstart', () => {
+            console.log(`Started loading audio: ${sound.url}`)
+          })
+          
+          // Set src after adding event listeners
+          audio.src = sound.url
+          
+          // Add to map immediately, don't wait for loading
+          setAudioMap(prev => new Map(prev).set(sound.id, audio))
+        } catch (audioError) {
+          console.error(`Error creating audio element for ${sound.url}:`, audioError)
+        }
       })
       
     } catch (error) {
@@ -72,6 +90,16 @@ export function useAudio() {
         return
       }
 
+      // Check if audio is ready to play
+      if (audio.readyState < 2) { // HAVE_CURRENT_DATA
+        console.warn(`Audio ${soundId} not ready, readyState: ${audio.readyState}`)
+        // Try to load the audio first
+        audio.load()
+        
+        // Wait a bit for the audio to load
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
       // Reset audio to beginning
       audio.currentTime = 0
       audio.volume = Math.min(1, Math.max(0, volume * (settings?.master_volume || 1)))
@@ -81,9 +109,26 @@ export function useAudio() {
         await audio.play()
       } catch (playError) {
         console.warn(`Failed to play ${soundId}, trying to reload:`, playError)
+        console.warn(`Audio readyState: ${audio.readyState}, networkState: ${audio.networkState}`)
+        
         // Try to reload the audio and play again
         audio.load()
-        await audio.play()
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        try {
+          await audio.play()
+        } catch (reloadError) {
+          console.warn(`Failed to play ${soundId} after reload, trying fallback:`, reloadError)
+          
+          // Try fallback sound if available
+          const fallbackSound = FALLBACK_SOUNDS.find(s => s.id === soundId)
+          if (fallbackSound) {
+            console.log(`Using fallback sound for ${soundId}: ${fallbackSound.url}`)
+            const fallbackAudio = new Audio(fallbackSound.url)
+            fallbackAudio.volume = Math.min(1, Math.max(0, volume * (settings?.master_volume || 1)))
+            await fallbackAudio.play()
+          }
+        }
       }
     } catch (error) {
       console.error('Error playing sound:', error)
