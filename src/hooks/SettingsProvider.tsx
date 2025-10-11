@@ -100,6 +100,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         console.log('Settings fetched successfully:', data)
         setSettings(data)
         setError(null)
+        
+        // Cache the settings for future use
+        try {
+          localStorage.setItem('dorobuddy-settings', JSON.stringify(data))
+          console.log('Settings cached successfully')
+        } catch (cacheError) {
+          console.warn('Failed to cache settings:', cacheError)
+        }
       } catch (fetchError) {
         clearTimeout(timeoutId)
         throw fetchError
@@ -120,19 +128,43 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           
           console.warn('Settings fetch timed out after retry, using default settings')
           // Use default settings immediately without throwing error
-          setSettings(getDefaultSettings())
+          const defaultSettings = getDefaultSettings()
+          setSettings(defaultSettings)
           setError(null) // Don't show error for timeout
+          
+          // Cache default settings
+          try {
+            localStorage.setItem('dorobuddy-settings', JSON.stringify(defaultSettings))
+          } catch (cacheError) {
+            console.warn('Failed to cache default settings:', cacheError)
+          }
         } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
           // Network error - use default settings
           console.warn('Network error, using default settings')
-          setSettings(getDefaultSettings())
+          const defaultSettings = getDefaultSettings()
+          setSettings(defaultSettings)
           setError(null)
+          
+          // Cache default settings
+          try {
+            localStorage.setItem('dorobuddy-settings', JSON.stringify(defaultSettings))
+          } catch (cacheError) {
+            console.warn('Failed to cache default settings:', cacheError)
+          }
         } else {
           // Other errors - show error but don't block the UI
           console.error('Settings fetch error:', err.message)
           setError(err)
           // Still provide default settings to prevent UI blocking
-          setSettings(getDefaultSettings())
+          const defaultSettings = getDefaultSettings()
+          setSettings(defaultSettings)
+          
+          // Cache default settings
+          try {
+            localStorage.setItem('dorobuddy-settings', JSON.stringify(defaultSettings))
+          } catch (cacheError) {
+            console.warn('Failed to cache default settings:', cacheError)
+          }
         }
       }
     } finally {
@@ -164,12 +196,58 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       
       // Force a new object reference to ensure React detects the change
       setSettings({ ...updatedSettings })
+      
+      // Cache the updated settings
+      try {
+        localStorage.setItem('dorobuddy-settings', JSON.stringify(updatedSettings))
+        console.log('Updated settings cached successfully')
+      } catch (cacheError) {
+        console.warn('Failed to cache updated settings:', cacheError)
+      }
+      
       return updatedSettings
     } catch (err) {
       console.error('Error updating settings:', err)
       throw err
     }
   }
+
+  // Load cached settings on mount
+  useEffect(() => {
+    const loadCachedSettings = () => {
+      try {
+        const cachedSettings = localStorage.getItem('dorobuddy-settings')
+        if (cachedSettings) {
+          const parsedSettings = JSON.parse(cachedSettings)
+          console.log('Loading cached settings:', parsedSettings)
+          setSettings(parsedSettings)
+          setLoading(false)
+          return true
+        }
+      } catch (error) {
+        console.warn('Failed to load cached settings:', error)
+      }
+      return false
+    }
+
+    // Try to load cached settings first
+    const hasCachedSettings = loadCachedSettings()
+    
+    // If no cached settings, provide defaults immediately
+    if (!hasCachedSettings) {
+      const defaultSettings = getDefaultSettings()
+      setSettings(defaultSettings)
+      setLoading(false)
+      
+      // Cache the default settings
+      try {
+        localStorage.setItem('dorobuddy-settings', JSON.stringify(defaultSettings))
+        console.log('Default settings cached on mount')
+      } catch (cacheError) {
+        console.warn('Failed to cache default settings on mount:', cacheError)
+      }
+    }
+  }, [])
 
   // Fetch settings when user changes
   useEffect(() => {
@@ -178,22 +256,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       return
     }
     
-    // If no user, provide default settings immediately to prevent UI blocking
+    // If no user, don't fetch from server but keep cached settings
     if (!user) {
-      setSettings(getDefaultSettings())
       setLoading(false)
       return
     }
     
-    fetchSettings()
-  }, [user])
-
-  // Provide default settings immediately on mount to prevent loading state
-  useEffect(() => {
-    if (!settings && !loading) {
-      setSettings(getDefaultSettings())
+    // Only fetch from server if we don't have cached settings
+    const cachedSettings = localStorage.getItem('dorobuddy-settings')
+    if (!cachedSettings) {
+      fetchSettings()
+    } else {
+      setLoading(false)
     }
-  }, [])
+  }, [user])
 
   // Apply theme to document when settings.theme changes
   useEffect(() => {
