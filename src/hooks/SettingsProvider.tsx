@@ -24,7 +24,29 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const supabase = createBrowserClient()
 
-  // Fetch user settings (with caching and mobile optimization)
+  // Default settings to prevent UI blocking
+  const getDefaultSettings = (): UserSettings => ({
+    id: 'default',
+    user_id: user?.id || 'default',
+    work_duration: 1500,
+    short_break_duration: 300,
+    long_break_duration: 1800,
+    sessions_until_long_break: 4,
+    auto_start_breaks: false,
+    auto_start_pomodoros: false,
+    theme: 'system',
+    notification_sound: 'bell',
+    break_sound: 'chime',
+    master_volume: 0.7,
+    notification_volume: 0.8,
+    music_volume: 0.5,
+    ambient_volume: 0.3,
+    spotify_enabled: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  })
+
+  // Fetch user settings (with improved timeout handling)
   const fetchSettings = async (retryCount = 0) => {
     if (!user) {
       setLoading(false)
@@ -41,11 +63,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
       
-      // Add timeout for mobile devices - increased to 10 seconds
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
-      )
-      
       // Check if user is properly authenticated by getting current session
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
@@ -55,62 +72,68 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const response = await Promise.race([
-        fetch('/api/settings'),
-        timeoutPromise
-      ]) as Response
+      // Create a more robust timeout mechanism
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // Reduced to 8 seconds
       
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('User not authenticated, skipping settings fetch')
-          setLoading(false)
-          setSettings(null)
-          return
+      try {
+        const response = await fetch('/api/settings', {
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('User not authenticated, skipping settings fetch')
+            setLoading(false)
+            setSettings(null)
+            return
+          }
+          throw new Error(`HTTP ${response.status}: Failed to fetch settings`)
         }
-        throw new Error('Failed to fetch settings')
-      }
 
-      const data = await response.json()
-      console.log('Settings fetched in SettingsProvider:', data)
-      setSettings(data)
+        const data = await response.json()
+        console.log('Settings fetched successfully:', data)
+        setSettings(data)
+        setError(null)
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        throw fetchError
+      }
+      
     } catch (err) {
       console.error('Error fetching settings:', err)
       
-      // Handle timeout errors gracefully
-      if (err instanceof Error && err.message.includes('Settings fetch timeout')) {
-        // Retry once if we haven't already
-        if (retryCount < 1) {
-          console.warn('Settings fetch timed out, retrying...')
-          setTimeout(() => fetchSettings(retryCount + 1), 2000)
-          return
+      // Handle different types of errors
+      if (err instanceof Error) {
+        if (err.name === 'AbortError' || err.message.includes('aborted')) {
+          // Timeout occurred
+          if (retryCount < 1) {
+            console.warn('Settings fetch timed out, retrying once...')
+            setTimeout(() => fetchSettings(retryCount + 1), 1000)
+            return
+          }
+          
+          console.warn('Settings fetch timed out after retry, using default settings')
+          // Use default settings immediately without throwing error
+          setSettings(getDefaultSettings())
+          setError(null) // Don't show error for timeout
+        } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          // Network error - use default settings
+          console.warn('Network error, using default settings')
+          setSettings(getDefaultSettings())
+          setError(null)
+        } else {
+          // Other errors - show error but don't block the UI
+          console.error('Settings fetch error:', err.message)
+          setError(err)
+          // Still provide default settings to prevent UI blocking
+          setSettings(getDefaultSettings())
         }
-        
-        console.warn('Settings fetch timed out after retry, using default settings')
-        // Use default settings instead of showing error
-        const defaultSettings = {
-          id: 'default',
-          user_id: user?.id || 'default',
-          work_duration: 1500,
-          short_break_duration: 300,
-          long_break_duration: 1800,
-          sessions_until_long_break: 4,
-          auto_start_breaks: false,
-          auto_start_pomodoros: false,
-          theme: 'system',
-          notification_sound: 'bell',
-          break_sound: 'chime',
-          master_volume: 0.7,
-          notification_volume: 0.8,
-          music_volume: 0.5,
-          ambient_volume: 0.3,
-          spotify_enabled: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as UserSettings
-        setSettings(defaultSettings)
-        setError(null) // Don't show error for timeout
-      } else if (err instanceof Error && !err.message.includes('Failed to fetch settings')) {
-        setError(err as Error)
       }
     } finally {
       setLoading(false)
@@ -154,8 +177,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined' && window.location.pathname === '/auth/confirmed') {
       return
     }
+    
+    // If no user, provide default settings immediately to prevent UI blocking
+    if (!user) {
+      setSettings(getDefaultSettings())
+      setLoading(false)
+      return
+    }
+    
     fetchSettings()
   }, [user])
+
+  // Provide default settings immediately on mount to prevent loading state
+  useEffect(() => {
+    if (!settings && !loading) {
+      setSettings(getDefaultSettings())
+    }
+  }, [])
 
   // Apply theme to document when settings.theme changes
   useEffect(() => {
