@@ -22,7 +22,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: 'timer', label: 'Timer', icon: <Clock className="w-4 h-4" /> },
-  { id: 'audio', label: 'Audio', icon: <Volume2 className="w-4 h-4" /> },
+  { id: 'audio', label: 'Sound', icon: <Volume2 className="w-4 h-4" /> },
   { id: 'theme', label: 'Theme', icon: <Palette className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
   { id: 'music', label: 'Music', icon: <Music className="w-4 h-4" /> },
@@ -433,7 +433,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               {activeTab === 'audio' && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Audio Settings
+                    Sound Settings
                   </h3>
 
                   {/* Volume Controls */}
