@@ -25,7 +25,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const supabase = createBrowserClient()
 
   // Fetch user settings (with caching and mobile optimization)
-  const fetchSettings = async () => {
+  const fetchSettings = async (retryCount = 0) => {
     if (!user) {
       setLoading(false)
       setSettings(null)
@@ -41,9 +41,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
       
-      // Add timeout for mobile devices
+      // Add timeout for mobile devices - increased to 10 seconds
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
+        setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
       )
       
       // Check if user is properly authenticated by getting current session
@@ -75,8 +75,41 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setSettings(data)
     } catch (err) {
       console.error('Error fetching settings:', err)
-      // Don't set error for authentication issues
-      if (err instanceof Error && !err.message.includes('Failed to fetch settings')) {
+      
+      // Handle timeout errors gracefully
+      if (err instanceof Error && err.message.includes('Settings fetch timeout')) {
+        // Retry once if we haven't already
+        if (retryCount < 1) {
+          console.warn('Settings fetch timed out, retrying...')
+          setTimeout(() => fetchSettings(retryCount + 1), 2000)
+          return
+        }
+        
+        console.warn('Settings fetch timed out after retry, using default settings')
+        // Use default settings instead of showing error
+        const defaultSettings = {
+          id: 'default',
+          user_id: user?.id || 'default',
+          work_duration: 1500,
+          short_break_duration: 300,
+          long_break_duration: 1800,
+          sessions_until_long_break: 4,
+          auto_start_breaks: false,
+          auto_start_pomodoros: false,
+          theme: 'system',
+          notification_sound: 'bell',
+          break_sound: 'chime',
+          master_volume: 0.7,
+          notification_volume: 0.8,
+          music_volume: 0.5,
+          ambient_volume: 0.3,
+          spotify_enabled: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserSettings
+        setSettings(defaultSettings)
+        setError(null) // Don't show error for timeout
+      } else if (err instanceof Error && !err.message.includes('Failed to fetch settings')) {
         setError(err as Error)
       }
     } finally {
