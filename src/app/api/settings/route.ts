@@ -7,8 +7,21 @@ import type { Database } from '@/types/supabase'
 // GET /api/settings - Fetch user settings
 export async function GET(request: Request) {
   try {
+    console.log('🔧 [Settings API] Starting GET request')
+    
+    // Check environment variables
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('❌ [Settings API] Missing Supabase environment variables')
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 503 }
+      )
+    }
+
+    console.log('🔧 [Settings API] Creating Supabase client')
     const supabase = createRouteHandlerClient<Database>({ cookies })
 
+    console.log('🔧 [Settings API] Getting authenticated user')
     // Get authenticated user
     const {
       data: { user },
@@ -16,13 +29,17 @@ export async function GET(request: Request) {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.log('❌ [Settings API] Authentication failed:', authError?.message || 'No user')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
+    console.log('✅ [Settings API] User authenticated:', user.id)
+
     // Fetch user settings
+    console.log('🔧 [Settings API] Fetching user settings from database')
     const { data: settings, error: settingsError } = await supabase
       .from('user_settings')
       .select('*')
@@ -30,8 +47,11 @@ export async function GET(request: Request) {
       .single()
 
     if (settingsError) {
+      console.log('⚠️ [Settings API] Settings fetch error:', settingsError.code, settingsError.message)
+      
       // If no settings found, return default settings
       if (settingsError.code === 'PGRST116') {
+        console.log('🔧 [Settings API] No settings found, creating default settings')
         const defaultSettings = {
           user_id: user.id,
           work_duration: 1500,
@@ -51,6 +71,7 @@ export async function GET(request: Request) {
         }
 
         // Create default settings in database
+        console.log('🔧 [Settings API] Inserting default settings into database')
         const { data: newSettings, error: createError } = await supabase
           .from('user_settings')
           .insert([defaultSettings])
@@ -58,23 +79,31 @@ export async function GET(request: Request) {
           .single()
 
         if (createError) {
-          console.error('Error creating default settings:', createError)
+          console.error('❌ [Settings API] Error creating default settings:', createError)
+          console.log('🔧 [Settings API] Returning default settings without database storage')
           return NextResponse.json(defaultSettings)
         }
 
+        console.log('✅ [Settings API] Default settings created successfully')
         return NextResponse.json(newSettings)
       }
 
-      console.error('Error fetching settings:', settingsError)
+      console.error('❌ [Settings API] Database error fetching settings:', settingsError)
       return NextResponse.json(
         { error: 'Failed to fetch settings' },
         { status: 500 }
       )
     }
 
+    console.log('✅ [Settings API] Settings fetched successfully')
     return NextResponse.json(settings)
   } catch (error) {
-    console.error('Unexpected error in GET /api/settings:', error)
+    console.error('❌ [Settings API] Unexpected error in GET /api/settings:', error)
+    console.error('❌ [Settings API] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
