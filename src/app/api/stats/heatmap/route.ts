@@ -23,43 +23,31 @@ export async function GET(request: NextRequest) {
     const queryStartDate = startDate || defaultStartDate.toISOString().split('T')[0];
     const queryEndDate = endDate || defaultEndDate.toISOString().split('T')[0];
 
-    // Get session data from the database
-    const { data: sessions, error } = await supabase
-      .from('pomodoro_sessions')
+    // Get daily stats from the database
+    const { data: dailyStats, error } = await supabase
+      .from('daily_stats')
       .select('*')
       .eq('user_id', user.id)
-      .gte('created_at', queryStartDate)
-      .lte('created_at', queryEndDate)
-      .order('created_at', { ascending: true });
+      .gte('date', queryStartDate)
+      .lte('date', queryEndDate)
+      .order('date', { ascending: true });
 
     if (error) {
-      console.error('Error fetching sessions:', error);
-      return NextResponse.json({ error: 'Failed to fetch session data' }, { status: 500 });
+      console.error('Error fetching daily stats:', error);
+      return NextResponse.json({ error: 'Failed to fetch daily stats' }, { status: 500 });
     }
 
-    console.log(`Found ${sessions?.length || 0} sessions for user ${user.id}`);
+    console.log(`Found ${dailyStats?.length || 0} daily stats for user ${user.id}`);
 
-    // Group sessions by date
-    const dailyData = new Map<string, { count: number; intensity: number }>();
-    
-    if (sessions && sessions.length > 0) {
-      sessions.forEach(session => {
-        const date = new Date(session.created_at).toISOString().split('T')[0];
-        const existing = dailyData.get(date) || { count: 0, intensity: 0 };
-        existing.count += 1;
-        dailyData.set(date, existing);
-      });
-    }
-
-    // Calculate intensity levels and streaks
-    const data = Array.from(dailyData.entries()).map(([date, stats]) => ({
-      date,
-      count: stats.count,
-      intensity: Math.min(4, Math.floor(stats.count / 2) + 1), // Scale intensity based on count
+    // Convert daily stats to heatmap format
+    const data = (dailyStats || []).map(stat => ({
+      date: stat.date,
+      count: stat.completed_sessions,
+      intensity: stat.intensity_level,
     }));
 
     // Calculate streaks
-    const sortedDates = Array.from(dailyData.keys()).sort();
+    const sortedDates = data.map(d => d.date).sort();
     let currentStreak = 0;
     let longestStreak = 0;
     let tempStreak = 0;
@@ -67,7 +55,8 @@ export async function GET(request: NextRequest) {
 
     for (let i = sortedDates.length - 1; i >= 0; i--) {
       const date = sortedDates[i];
-      const hasActivity = (dailyData.get(date)?.count ?? 0) > 0;
+      const dayData = data.find(d => d.date === date);
+      const hasActivity = (dayData?.count ?? 0) > 0;
       
       if (hasActivity) {
         tempStreak++;

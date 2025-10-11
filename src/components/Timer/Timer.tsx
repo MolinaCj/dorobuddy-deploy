@@ -118,7 +118,7 @@ const switchMode = useCallback(
 
 
   // Handle timer completion
-  const handleTimerComplete = useCallback(() => {
+  const handleTimerComplete = useCallback(async () => {
     if (hasCompletedRef.current) return
     hasCompletedRef.current = true
 
@@ -150,9 +150,36 @@ const switchMode = useCallback(
       }
     }
 
-    // Trigger callback only for work sessions
+    // Record session in database only for work sessions
     if (currentMode === 'work') {
-      onSessionComplete(`session-${Date.now()}`)
+      try {
+        const duration = getDuration(currentMode)
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            task_id: selectedTaskId || null,
+            session_type: 'work',
+            planned_duration: duration,
+            actual_duration: duration,
+            notes: null
+          })
+        })
+
+        if (response.ok) {
+          const { session } = await response.json()
+          console.log('Session recorded successfully:', session)
+          onSessionComplete(session.id)
+        } else {
+          console.error('Failed to record session:', await response.text())
+          onSessionComplete(`session-${Date.now()}`) // Fallback
+        }
+      } catch (error) {
+        console.error('Error recording session:', error)
+        onSessionComplete(`session-${Date.now()}`) // Fallback
+      }
     }
 
     // Determine next mode
