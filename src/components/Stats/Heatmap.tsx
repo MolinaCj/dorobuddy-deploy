@@ -254,13 +254,32 @@ export default function Heatmap({
       day: 'numeric',
     });
 
+    // Enhanced tooltip with stopwatch information
+    const pomodoroSessions = (day as any).pomodoro_sessions || 0;
+    const stopwatchTime = (day as any).stopwatch_time || 0;
+    const totalTimeMinutes = (day as any).total_time_minutes || 0;
+    
+    let label = 'No activity';
+    if (day.count > 0) {
+      const parts = [];
+      if (pomodoroSessions > 0) {
+        parts.push(`${pomodoroSessions} Pomodoro session${pomodoroSessions !== 1 ? 's' : ''}`);
+      }
+      if (stopwatchTime > 0) {
+        const stopwatchMinutes = Math.round(stopwatchTime / 60);
+        parts.push(`${stopwatchMinutes}min stopwatch`);
+      }
+      label = parts.join(' + ');
+    }
+
     return {
       date: formattedDate,
       count: day.count,
       intensity: day.intensity,
-      label: day.count === 0 ? 'No sessions' : 
-              day.count === 1 ? '1 session' : 
-              `${day.count} sessions`,
+      label,
+      pomodoroSessions,
+      stopwatchTime,
+      totalTimeMinutes,
     };
   }, []);
 
@@ -271,6 +290,21 @@ export default function Heatmap({
     const totalSessions = gridData.reduce((sum, d) => sum + d.count, 0);
     const averageSessions = totalSessions / Math.max(totalDays, 1);
     const maxDailySessions = Math.max(...gridData.map(d => d.count), 0);
+    
+    // Calculate stopwatch statistics
+    const totalStopwatchTime = gridData.reduce((sum, d) => {
+      const stopwatchTime = (d as any).stopwatch_time || 0;
+      return sum + stopwatchTime;
+    }, 0);
+    const totalStopwatchMinutes = Math.round(totalStopwatchTime / 60);
+    const totalStopwatchHours = Math.round(totalStopwatchMinutes / 60 * 10) / 10;
+    
+    // Calculate total focus time (Pomodoro + Stopwatch)
+    const totalFocusTime = gridData.reduce((sum, d) => {
+      const totalTimeMinutes = (d as any).total_time_minutes || 0;
+      return sum + totalTimeMinutes;
+    }, 0);
+    const totalFocusHours = Math.round(totalFocusTime / 60 * 10) / 10;
     
     // Calculate activity consistency
     const consistency = activeDays / Math.max(totalDays, 1) * 100;
@@ -289,6 +323,11 @@ export default function Heatmap({
       return daysDiff <= 7;
     });
     const recentSessions = recentDays.reduce((sum, d) => sum + d.count, 0);
+    const recentStopwatchTime = recentDays.reduce((sum, d) => {
+      const stopwatchTime = (d as any).stopwatch_time || 0;
+      return sum + stopwatchTime;
+    }, 0);
+    const recentStopwatchMinutes = Math.round(recentStopwatchTime / 60);
     
     return {
       totalSessions: data.total_sessions,
@@ -302,6 +341,12 @@ export default function Heatmap({
       activityLevel: getUserActivityLevel,
       recentSessions,
       intensityDistribution,
+      // New stopwatch statistics
+      totalStopwatchMinutes,
+      totalStopwatchHours,
+      totalFocusTime,
+      totalFocusHours,
+      recentStopwatchMinutes,
     };
   }, [data, gridData, getUserActivityLevel]);
 
@@ -368,8 +413,35 @@ export default function Heatmap({
               <div className="font-semibold text-gray-900 dark:text-white">
                 {stats.recentSessions} sessions
               </div>
+              {stats.recentStopwatchMinutes > 0 && (
+                <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  +{stats.recentStopwatchMinutes}min stopwatch
+                </div>
+              )}
             </div>
           </div>
+          
+          {/* Focus Time Summary */}
+          {stats.totalFocusTime > 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900 dark:text-white">Total Focus Time</h4>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {stats.totalFocusHours}h
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Pomodoro:</span>
+                  <span className="ml-2 font-medium">{Math.round((stats.totalFocusTime - stats.totalStopwatchMinutes) / 60 * 10) / 10}h</span>
+                </div>
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400">Stopwatch:</span>
+                  <span className="ml-2 font-medium text-orange-600 dark:text-orange-400">{stats.totalStopwatchHours}h</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -474,7 +546,7 @@ export default function Heatmap({
             <span>More active</span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Optimized for {stats.activityLevel} activity level • Recent activity gets bonus intensity
+            Optimized for {stats.activityLevel} activity level • Includes Pomodoro + Stopwatch time • Recent activity gets bonus intensity
           </div>
         </div>
       )}
@@ -505,8 +577,8 @@ export default function Heatmap({
             
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600 dark:text-gray-400">Sessions:</span>
-                <span className="ml-2 font-medium">{selectedDay.count}</span>
+                <span className="text-gray-600 dark:text-gray-400">Total Activity:</span>
+                <span className="ml-2 font-medium">{selectedDay.count} sessions</span>
               </div>
               <div>
                 <span className="text-gray-600 dark:text-gray-400">Intensity:</span>
@@ -514,10 +586,47 @@ export default function Heatmap({
                   {selectedDay.intensity === 0 ? 'None' :
                    selectedDay.intensity === 1 ? 'Low' :
                    selectedDay.intensity === 2 ? 'Medium' :
-                   selectedDay.intensity === 3 ? 'High' : 'Very High'}
+                   selectedDay.intensity === 3 ? 'High' :
+                   selectedDay.intensity === 4 ? 'Very High' :
+                   selectedDay.intensity === 5 ? 'Extreme' : 'Maximum'}
                 </span>
               </div>
             </div>
+
+            {/* Detailed breakdown */}
+            {(() => {
+              const pomodoroSessions = (selectedDay as any).pomodoro_sessions || 0;
+              const stopwatchTime = (selectedDay as any).stopwatch_time || 0;
+              const totalTimeMinutes = (selectedDay as any).total_time_minutes || 0;
+              
+              if (pomodoroSessions > 0 || stopwatchTime > 0) {
+                return (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {pomodoroSessions > 0 && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Pomodoro:</span>
+                          <span className="ml-2 font-medium">{pomodoroSessions} session{pomodoroSessions !== 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                      {stopwatchTime > 0 && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Stopwatch:</span>
+                          <span className="ml-2 font-medium">{Math.round(stopwatchTime / 60)} minutes</span>
+                        </div>
+                      )}
+                      {totalTimeMinutes > 0 && (
+                        <div className="col-span-2">
+                          <span className="text-gray-600 dark:text-gray-400">Total Focus Time:</span>
+                          <span className="ml-2 font-medium">{totalTimeMinutes} minutes</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Intensity Bar */}
             <div className="mt-3">
@@ -527,16 +636,28 @@ export default function Heatmap({
                     selectedDay.intensity === 0 ? 'bg-gray-300' :
                     selectedDay.intensity === 1 ? 'bg-green-300' :
                     selectedDay.intensity === 2 ? 'bg-green-400' :
-                    selectedDay.intensity === 3 ? 'bg-green-500' : 'bg-green-600'
+                    selectedDay.intensity === 3 ? 'bg-green-500' :
+                    selectedDay.intensity === 4 ? 'bg-green-600' :
+                    selectedDay.intensity === 5 ? 'bg-green-700' : 'bg-green-800'
                   }`}
-                  style={{ width: `${(selectedDay.intensity / 4) * 100}%` }}
+                  style={{ width: `${(selectedDay.intensity / 6) * 100}%` }}
                 />
               </div>
             </div>
 
             {selectedDay.count > 0 && (
               <div className="mt-3 text-xs text-gray-500">
-                Estimated focus time: ~{selectedDay.count * 25} minutes
+                {(() => {
+                  const pomodoroSessions = (selectedDay as any).pomodoro_sessions || 0;
+                  const stopwatchTime = (selectedDay as any).stopwatch_time || 0;
+                  const totalTimeMinutes = (selectedDay as any).total_time_minutes || 0;
+                  
+                  if (totalTimeMinutes > 0) {
+                    return `Total focus time: ${totalTimeMinutes} minutes`;
+                  } else {
+                    return `Estimated focus time: ~${selectedDay.count * 25} minutes`;
+                  }
+                })()}
               </div>
             )}
           </div>

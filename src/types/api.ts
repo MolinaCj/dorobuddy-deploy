@@ -178,7 +178,10 @@ export interface DailyStats {
 export interface HeatmapData {
   date: string;
   count: number;
-  intensity: number; // 0-4
+  intensity: number; // 0-6 (enhanced to include stopwatch)
+  pomodoro_sessions?: number; // Original Pomodoro sessions
+  stopwatch_time?: number; // Stopwatch time in seconds
+  total_time_minutes?: number; // Total time in minutes
 }
 
 export interface HeatmapResponse {

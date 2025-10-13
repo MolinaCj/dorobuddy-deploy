@@ -39,12 +39,46 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${dailyStats?.length || 0} daily stats for user ${user.id}`);
 
-    // Convert daily stats to heatmap format
-    const data = (dailyStats || []).map(stat => ({
-      date: stat.date,
-      count: stat.completed_sessions,
-      intensity: stat.intensity_level,
-    }));
+    // Convert daily stats to heatmap format, including stopwatch time
+    const data = (dailyStats || []).map(stat => {
+      // Calculate total activity time (Pomodoro + Stopwatch)
+      const pomodoroTime = stat.total_work_time || 0; // in seconds
+      const stopwatchTime = stat.total_stopwatch_time || 0; // in seconds
+      const totalTimeMinutes = (pomodoroTime + stopwatchTime) / 60;
+      
+      // Enhanced intensity calculation that includes stopwatch time
+      let enhancedIntensity = stat.intensity_level || 0;
+      
+      // Boost intensity if there's significant stopwatch time
+      if (stopwatchTime > 0) {
+        const stopwatchHours = stopwatchTime / 3600;
+        if (stopwatchHours >= 2) {
+          enhancedIntensity = Math.min(6, enhancedIntensity + 2); // Significant stopwatch time
+        } else if (stopwatchHours >= 1) {
+          enhancedIntensity = Math.min(6, enhancedIntensity + 1); // Moderate stopwatch time
+        } else if (stopwatchHours >= 0.5) {
+          enhancedIntensity = Math.min(6, enhancedIntensity + 0.5); // Some stopwatch time
+        }
+      }
+      
+      // Enhanced session count to include stopwatch activity
+      let enhancedCount = stat.completed_sessions || 0;
+      if (stopwatchTime > 0) {
+        // Add "virtual sessions" based on stopwatch time (every 25 minutes = 1 session)
+        const stopwatchSessions = Math.floor(stopwatchTime / 1500); // 1500 seconds = 25 minutes
+        enhancedCount += stopwatchSessions;
+      }
+      
+      return {
+        date: stat.date,
+        count: enhancedCount,
+        intensity: Math.round(enhancedIntensity),
+        // Additional data for detailed view
+        pomodoro_sessions: stat.completed_sessions || 0,
+        stopwatch_time: stopwatchTime,
+        total_time_minutes: Math.round(totalTimeMinutes),
+      };
+    });
 
     // Calculate streaks
     const sortedDates = data.map(d => d.date).sort();
