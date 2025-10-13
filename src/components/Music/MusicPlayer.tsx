@@ -31,11 +31,9 @@ export default function MusicPlayer({
   sessionActive = false,
   onPlayStateChange 
 }: MusicPlayerProps) {
-  const { settings, syncSpotifyStatus } = useSettings();
+  const { settings } = useSettings();
   const { 
-    isConnected, 
-    connect, 
-    disconnect, 
+    isConnected,
     playback, 
     play, 
     pause, 
@@ -56,7 +54,6 @@ export default function MusicPlayer({
     repeat: 'off',
   });
 
-  const [showSpotifyConnect, setShowSpotifyConnect] = useState(false);
   const [fallbackTracks] = useState<Track[]>([
     {
       id: 'focus1',
@@ -154,30 +151,6 @@ export default function MusicPlayer({
     onPlayStateChange?.(localPlayback.isPlaying);
   }, [localPlayback.isPlaying, onPlayStateChange]);
 
-  // Handle Spotify connection
-  const handleSpotifyConnect = async () => {
-    try {
-      setShowSpotifyConnect(true);
-      await connect();
-      setShowSpotifyConnect(false);
-      // Sync with settings
-      await syncSpotifyStatus(true);
-    } catch (error) {
-      console.error('Failed to connect to Spotify:', error);
-      setShowSpotifyConnect(false);
-    }
-  };
-
-  // Handle Spotify disconnection
-  const handleSpotifyDisconnect = async () => {
-    try {
-      await disconnect();
-      // Sync with settings
-      await syncSpotifyStatus(false);
-    } catch (error) {
-      console.error('Failed to disconnect from Spotify:', error);
-    }
-  };
 
   // Handle play/pause
   const handlePlayPause = useCallback(async () => {
@@ -354,29 +327,6 @@ const handlePrevious = useCallback(async () => {
             Music Player
           </h3>
           
-          {/* Spotify Connection */}
-          <div className="flex items-center space-x-2">
-            {isConnected ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-green-600">Spotify Connected</span>
-                <button
-                  onClick={handleSpotifyDisconnect}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleSpotifyConnect}
-                disabled={loading || showSpotifyConnect}
-                className="px-3 py-1 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 disabled:opacity-50"
-              >
-                {showSpotifyConnect ? 'Connecting...' : 'Connect Spotify'}
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
@@ -572,128 +522,14 @@ const handlePrevious = useCallback(async () => {
         <div className="p-6 text-center">
           <Music className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 mb-4">
-            Connect to Spotify or use built-in sounds
+            Use built-in sounds for your focus sessions
           </p>
-          <button
-            onClick={handleSpotifyConnect}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            Connect Spotify
-          </button>
         </div>
       )}
     </div>
   );
 }
 
-// Spotify Connect Dialog Component
-export function SpotifyConnectDialog({ 
-  isOpen, 
-  onClose, 
-  onConnect 
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConnect: () => void;
-}) {
-  const [step, setStep] = useState<'info' | 'loading' | 'success' | 'error'>('info');
-
-  const handleConnect = async () => {
-    setStep('loading');
-    try {
-      await onConnect();
-      setStep('success');
-      setTimeout(() => {
-        onClose();
-        setStep('info');
-      }, 1500);
-    } catch {
-      setStep('error');
-      setTimeout(() => setStep('info'), 3000);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        <div className="text-center">
-          {step === 'info' && (
-            <>
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Music className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Connect to Spotify</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Access your Spotify playlists and control playback directly from DoroBuddy.
-              </p>
-              <div className="space-y-2 text-sm text-gray-500 mb-6">
-                <p>• Spotify Premium recommended for full control</p>
-                <p>• Free accounts can preview tracks</p>
-                <p>• Your data stays private and secure</p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={onClose}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConnect}
-                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                >
-                  Connect
-                </button>
-              </div>
-            </>
-          )}
-
-          {step === 'loading' && (
-            <>
-              <div className="w-16 h-16 border-4 border-green-200 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <h3 className="text-lg font-semibold mb-2">Connecting...</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Please authorize DoroBuddy in the popup window.
-              </p>
-            </>
-          )}
-
-          {step === 'success' && (
-            <>
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Music className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-green-600 mb-2">Connected!</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Your Spotify account is now connected.
-              </p>
-            </>
-          )}
-
-          {step === 'error' && (
-            <>
-              <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <X className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-red-600 mb-2">Connection Failed</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Unable to connect to Spotify. Please try again.
-              </p>
-              <button
-                onClick={() => setStep('info')}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Try Again
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Format time utility
 function formatTime(seconds: number): string {
