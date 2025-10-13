@@ -1,6 +1,6 @@
 // components/Stats/Heatmap.tsx
 import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar, TrendingUp, Flame, Target } from 'lucide-react';
+import { Calendar, TrendingUp, Flame, Target, Clock } from 'lucide-react';
 import { HeatmapData, HeatmapResponse } from '@/types/api';
 import { useStats } from '@/hooks/useStats';
 
@@ -377,11 +377,19 @@ export default function Heatmap({
                 <TrendingUp className="w-4 h-4" />
                 <span>{stats.averageSessions} avg/day</span>
               </div>
+              {stats.totalStopwatchMinutes > 0 && (
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-4 h-4 text-orange-500" />
+                  <span className="text-orange-600 dark:text-orange-400">
+                    {stats.totalStopwatchHours}h stopwatch
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           
           {/* Activity Level & Enhanced Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Activity Level</div>
               <div className={`font-semibold ${
@@ -419,6 +427,18 @@ export default function Heatmap({
                 </div>
               )}
             </div>
+            
+            {stats.totalStopwatchMinutes > 0 && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+                <div className="text-xs text-orange-600 dark:text-orange-400 mb-1">Stopwatch Time</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">
+                  {stats.totalStopwatchHours}h
+                </div>
+                <div className="text-xs text-orange-500 dark:text-orange-500 mt-1">
+                  {stats.totalStopwatchMinutes} minutes
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Focus Time Summary */}
@@ -666,7 +686,9 @@ export default function Heatmap({
 
       {/* Summary Stats */}
       {!compact && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className={`grid gap-4 pt-4 border-t border-gray-200 dark:border-gray-700 ${
+          stats.totalStopwatchMinutes > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'
+        }`}>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {stats.totalSessions}
@@ -694,6 +716,15 @@ export default function Heatmap({
             </div>
             <div className="text-sm text-gray-500">Active Days</div>
           </div>
+          
+          {stats.totalStopwatchMinutes > 0 && (
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                {stats.totalStopwatchHours}h
+              </div>
+              <div className="text-sm text-orange-500">Stopwatch Time</div>
+            </div>
+          )}
         </div>
       )}
     </div>
