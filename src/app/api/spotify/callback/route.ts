@@ -50,7 +50,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Store tokens in database
-    const { error: dbError } = await supabase
+    console.log('Storing tokens for user:', user.id);
+    console.log('Access token length:', tokens.access_token?.length);
+    console.log('Refresh token length:', tokens.refresh_token?.length);
+    console.log('Expires in:', tokens.expires_in);
+    
+    const { data: storedTokens, error: dbError } = await supabase
       .from('spotify_tokens')
       .upsert({
         user_id: user.id,
@@ -58,12 +63,15 @@ export async function GET(request: NextRequest) {
         refresh_token: tokens.refresh_token,
         expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
         scope: tokens.scope,
-      });
+      })
+      .select();
 
     if (dbError) {
       console.error('Database error:', dbError);
       return NextResponse.redirect(new URL('/?spotify_error=database_error', request.url));
     }
+    
+    console.log('Tokens stored successfully:', storedTokens);
 
     // Redirect back to the app with success
     return NextResponse.redirect(new URL('/?spotify_connected=true', request.url));

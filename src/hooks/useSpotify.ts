@@ -43,29 +43,38 @@ export function useSpotify() {
 
   // Check for Spotify connection status from URL parameters
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const spotifyConnected = urlParams.get('spotify_connected')
-    const spotifyError = urlParams.get('spotify_error')
+    const handleSpotifyCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const spotifyConnected = urlParams.get('spotify_connected')
+      const spotifyError = urlParams.get('spotify_error')
 
-    if (spotifyConnected === 'true') {
-      // Spotify connected successfully, refresh connection status
-      setState(prev => ({ ...prev, loading: false }))
-      checkSpotifyConnection()
-      
-      // Clear URL parameters
-      const newUrl = window.location.pathname
-      window.history.replaceState({}, '', newUrl)
+      if (spotifyConnected === 'true') {
+        // Spotify connected successfully, refresh connection status
+        setState(prev => ({ ...prev, loading: false }))
+        await checkSpotifyConnection()
+        
+        // Initialize the Spotify player after successful connection
+        setTimeout(() => {
+          initializePlayer()
+        }, 1000) // Small delay to ensure tokens are available
+        
+        // Clear URL parameters
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
+
+      if (spotifyError) {
+        // Spotify connection failed
+        setState(prev => ({ ...prev, loading: false }))
+        console.error('Spotify connection error:', spotifyError)
+        
+        // Clear URL parameters
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
     }
 
-    if (spotifyError) {
-      // Spotify connection failed
-      setState(prev => ({ ...prev, loading: false }))
-      console.error('Spotify connection error:', spotifyError)
-      
-      // Clear URL parameters
-      const newUrl = window.location.pathname
-      window.history.replaceState({}, '', newUrl)
-    }
+    handleSpotifyCallback()
   }, [])
 
   const checkSpotifyConnection = async () => {
@@ -77,6 +86,14 @@ export function useSpotify() {
         ...prev,
         isConnected: data.connected || false,
       }))
+
+      // If connected and no player exists, initialize the player
+      if (data.connected && !state.player) {
+        console.log('Spotify is connected, initializing player...')
+        setTimeout(() => {
+          initializePlayer()
+        }, 500)
+      }
     } catch (error) {
       console.error('Failed to check Spotify connection:', error)
     }
