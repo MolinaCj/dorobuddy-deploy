@@ -2,9 +2,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Play, Pause, RotateCcw, Settings, Coffee, Zap, SkipForward } from 'lucide-react'
+import { Play, Pause, RotateCcw, Settings, Coffee, Zap, SkipForward, Clock } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useAudio } from '@/hooks/useAudio'
+import { useStopwatch } from '@/hooks/useStopwatch'
 
 interface TimerProps {
   selectedTaskId?: string
@@ -12,19 +13,21 @@ interface TimerProps {
   onOpenSettings: () => void
 }
 
-type TimerMode = 'work' | 'shortBreak' | 'longBreak'
+type TimerMode = 'work' | 'shortBreak' | 'longBreak' | 'stopwatch'
 
 interface TimerState {
   mode: TimerMode
   timeRemaining: number
   isActive: boolean
   sessionsCompleted: number
+  stopwatchTime: number // For stopwatch mode - counts up from 0
   // isReversed: boolean // Commented out reverse mode
 }
 
 export default function Timer({ selectedTaskId, onSessionComplete, onOpenSettings }: TimerProps) {
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
+  const { saveSession } = useStopwatch()
   
 
   // Timer state
@@ -33,12 +36,14 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
     timeRemaining: 1500, // 25 minutes default
     isActive: false,
     sessionsCompleted: 0,
+    stopwatchTime: 0, // Start at 0 for stopwatch
     // isReversed: false, // Commented out reverse mode
   })
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number | null>(null)
   const hasCompletedRef = useRef(false)
+  const stopwatchStartTimeRef = useRef<Date | null>(null) // Track when stopwatch started
 
   // Get duration for current mode
   const getDuration = useCallback((mode: TimerMode): number => {
@@ -51,6 +56,8 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
         return settings.short_break_duration
       case 'longBreak':
         return settings.long_break_duration
+      case 'stopwatch':
+        return 0 // Stopwatch starts at 0
       default:
         return 1500
     }
@@ -70,6 +77,8 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
                 return settings.short_break_duration
               case 'longBreak':
                 return settings.long_break_duration
+              case 'stopwatch':
+                return 0 // Stopwatch always starts at 0
               default:
                 return settings.work_duration
             }
@@ -78,6 +87,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
           return {
             ...prev,
             timeRemaining: newDuration, // Removed reverse mode logic
+            stopwatchTime: prev.mode === 'stopwatch' ? prev.stopwatchTime : 0, // Preserve stopwatch time when switching modes
           }
         }
         return prev
@@ -91,17 +101,37 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   // Switch timer mode
 const switchMode = useCallback(
   (newMode: TimerMode, incrementSession: boolean = false) => {
-    setState(prev => ({
-      ...prev,
-      mode: newMode,
-      timeRemaining: getDuration(newMode), // now always fresh
-      isActive: false,
-      sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
-      // Removed reverse mode logic
-    }))
+    setState(prev => {
+      // If switching away from stopwatch and it was running, save the session first
+      if (prev.mode === 'stopwatch' && prev.isActive && stopwatchStartTimeRef.current) {
+        const endTime = new Date()
+        const duration = prev.stopwatchTime
+        
+        // Save stopwatch session in background
+        saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+          .then((session) => {
+            console.log('Stopwatch session saved on mode switch:', session)
+          })
+          .catch((error) => {
+            console.error('Failed to save stopwatch session on mode switch:', error)
+          })
+        
+        stopwatchStartTimeRef.current = null
+      }
+      
+      return {
+        ...prev,
+        mode: newMode,
+        timeRemaining: getDuration(newMode), // now always fresh
+        isActive: false,
+        sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
+        stopwatchTime: newMode === 'stopwatch' ? prev.stopwatchTime : 0, // Preserve stopwatch time when switching to stopwatch
+        // Removed reverse mode logic
+      }
+    })
     hasCompletedRef.current = false
 
-    if (settings) {
+    if (settings && newMode !== 'stopwatch') {
       const shouldAutoStart =
         (newMode !== 'work' && settings.auto_start_breaks) ||
         (newMode === 'work' && settings.auto_start_pomodoros)
@@ -113,7 +143,7 @@ const switchMode = useCallback(
       }
     }
   },
-  [settings, getDuration] // depends on settings and getDuration
+  [settings, getDuration, saveSession, selectedTaskId] // depends on settings and getDuration
 )
 
 
@@ -124,6 +154,11 @@ const switchMode = useCallback(
 
     const currentMode = state.mode
     const currentSessions = state.sessionsCompleted
+
+    // Don't handle completion for stopwatch mode
+    if (currentMode === 'stopwatch') {
+      return
+    }
 
     // Play completion sound
     if (settings) {
@@ -209,25 +244,37 @@ const switchMode = useCallback(
       return
     }
 
-    // Normal Pomodoro - count down (reverse mode commented out)
-    startTimeRef.current = Date.now()
-    const targetTime = Date.now() + (state.timeRemaining * 1000)
+    if (state.mode === 'stopwatch') {
+      // Stopwatch mode - count up
+      startTimeRef.current = Date.now() - (state.stopwatchTime * 1000)
 
-    intervalRef.current = setInterval(() => {
-      const now = Date.now()
-      const remaining = Math.ceil((targetTime - now) / 1000)
+      intervalRef.current = setInterval(() => {
+        const now = Date.now()
+        const elapsed = Math.floor((now - startTimeRef.current!) / 1000)
+        
+        setState(prev => ({ ...prev, stopwatchTime: elapsed }))
+      }, 100)
+    } else {
+      // Normal Pomodoro - count down (reverse mode commented out)
+      startTimeRef.current = Date.now()
+      const targetTime = Date.now() + (state.timeRemaining * 1000)
 
-      if (remaining <= 0) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current)
-          intervalRef.current = null
+      intervalRef.current = setInterval(() => {
+        const now = Date.now()
+        const remaining = Math.ceil((targetTime - now) / 1000)
+
+        if (remaining <= 0) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+          setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
+          handleTimerComplete()
+        } else {
+          setState(prev => ({ ...prev, timeRemaining: remaining }))
         }
-        setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
-        handleTimerComplete()
-      } else {
-        setState(prev => ({ ...prev, timeRemaining: remaining }))
-      }
-    }, 100)
+      }, 100)
+    }
 
     return () => {
       if (intervalRef.current) {
@@ -235,11 +282,37 @@ const switchMode = useCallback(
         intervalRef.current = null
       }
     }
-  }, [state.isActive, handleTimerComplete]) // Removed isReversed dependency
+  }, [state.isActive, state.mode, state.stopwatchTime, handleTimerComplete]) // Added stopwatch dependencies
 
   // Toggle play/pause
-  const toggleTimer = () => {
-    setState(prev => ({ ...prev, isActive: !prev.isActive }))
+  const toggleTimer = async () => {
+    setState(prev => {
+      const newIsActive = !prev.isActive
+      
+      // If stopping stopwatch and it was running, save the session
+      if (prev.mode === 'stopwatch' && prev.isActive && !newIsActive && stopwatchStartTimeRef.current) {
+        const endTime = new Date()
+        const duration = prev.stopwatchTime
+        
+        // Save stopwatch session in background (don't await to avoid blocking UI)
+        saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+          .then((session) => {
+            console.log('Stopwatch session saved:', session)
+          })
+          .catch((error) => {
+            console.error('Failed to save stopwatch session:', error)
+          })
+        
+        stopwatchStartTimeRef.current = null
+      }
+      
+      // If starting stopwatch, record the start time
+      if (prev.mode === 'stopwatch' && !prev.isActive && newIsActive) {
+        stopwatchStartTimeRef.current = new Date()
+      }
+      
+      return { ...prev, isActive: newIsActive }
+    })
   }
 
   // Toggle reverse mode - COMMENTED OUT
@@ -290,11 +363,31 @@ const switchMode = useCallback(
 
   // Reset timer
   const resetTimer = () => {
-    setState(prev => ({
-      ...prev,
-      timeRemaining: getDuration(prev.mode), // Removed reverse mode logic
-      isActive: false,
-    }))
+    setState(prev => {
+      // If resetting stopwatch and it was running, save the session first
+      if (prev.mode === 'stopwatch' && prev.isActive && stopwatchStartTimeRef.current) {
+        const endTime = new Date()
+        const duration = prev.stopwatchTime
+        
+        // Save stopwatch session in background
+        saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+          .then((session) => {
+            console.log('Stopwatch session saved on reset:', session)
+          })
+          .catch((error) => {
+            console.error('Failed to save stopwatch session on reset:', error)
+          })
+        
+        stopwatchStartTimeRef.current = null
+      }
+      
+      return {
+        ...prev,
+        timeRemaining: getDuration(prev.mode), // Removed reverse mode logic
+        stopwatchTime: prev.mode === 'stopwatch' ? 0 : prev.stopwatchTime, // Reset stopwatch time only in stopwatch mode
+        isActive: false,
+      }
+    })
     hasCompletedRef.current = false
   }
 
@@ -305,6 +398,7 @@ const switchMode = useCallback(
       timeRemaining: getDuration('work'),
       isActive: false,
       sessionsCompleted: 0,
+      stopwatchTime: 0, // Reset stopwatch time
       // isReversed: false, // Commented out reverse mode
     })
     hasCompletedRef.current = false
@@ -319,6 +413,10 @@ const switchMode = useCallback(
 
   // Calculate progress percentage
   const getProgress = (): number => {
+    if (state.mode === 'stopwatch') {
+      // For stopwatch, we don't show progress (or could show a different visualization)
+      return 0
+    }
     // Removed reverse mode logic - always calculate normal progress
     const total = getDuration(state.mode)
     return ((total - state.timeRemaining) / total) * 100
@@ -347,6 +445,13 @@ const switchMode = useCallback(
           icon: <Coffee className="w-6 h-6" />,
           color: 'text-purple-500',
           bgColor: 'bg-purple-500',
+        }
+      case 'stopwatch':
+        return {
+          title: 'Stopwatch',
+          icon: <Clock className="w-6 h-6" />,
+          color: 'text-orange-500',
+          bgColor: 'bg-orange-500',
         }
     }
   }
@@ -427,7 +532,7 @@ const switchMode = useCallback(
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <div className="text-6xl font-bold text-gray-900 dark:text-white tabular-nums">
-                {formatTime(state.timeRemaining)}
+                {state.mode === 'stopwatch' ? formatTime(state.stopwatchTime) : formatTime(state.timeRemaining)}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 {state.isActive ? 'In Progress' : 'Paused'} {/* Removed reverse mode text */}
@@ -507,53 +612,55 @@ const switchMode = useCallback(
         </button>
       </div> */}
 
-      {/* Session Progress */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Session Progress
-          </span>
-          <button
-            onClick={resetAll}
-            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            title="Reset all sessions"
-          >
-            Reset All
-          </button>
-        </div>
+      {/* Session Progress - Hidden in stopwatch mode */}
+      {state.mode !== 'stopwatch' && (
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Session Progress
+            </span>
+            <button
+              onClick={resetAll}
+              className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Reset all sessions"
+            >
+              Reset All
+            </button>
+          </div>
 
-        {/* Progress Dots */}
-        <div className="flex items-center justify-center space-x-3">
-          {Array.from({ length: sessionsUntilLongBreak }).map((_, index) => (
-            <div
-              key={index}
-              className={`
-                w-4 h-4 rounded-full transition-all
-                ${index < currentCyclePosition
-                  ? `${modeInfo.bgColor} shadow-md scale-110`
-                  : 'bg-gray-300 dark:bg-gray-600'
-                }
-              `}
-              title={`Session ${index + 1}`}
-            />
-          ))}
-        </div>
+          {/* Progress Dots */}
+          <div className="flex items-center justify-center space-x-3">
+            {Array.from({ length: sessionsUntilLongBreak }).map((_, index) => (
+              <div
+                key={index}
+                className={`
+                  w-4 h-4 rounded-full transition-all
+                  ${index < currentCyclePosition
+                    ? `${modeInfo.bgColor} shadow-md scale-110`
+                    : 'bg-gray-300 dark:bg-gray-600'
+                  }
+                `}
+                title={`Session ${index + 1}`}
+              />
+            ))}
+          </div>
 
-        <div className="text-center mt-3 text-sm text-gray-600 dark:text-gray-400">
-          {currentCyclePosition === 0 && state.sessionsCompleted > 0
-            ? `Completed ${Math.floor(state.sessionsCompleted / sessionsUntilLongBreak)} full cycle${Math.floor(state.sessionsCompleted / sessionsUntilLongBreak) !== 1 ? 's' : ''}!`
-            : `${currentCyclePosition} of ${sessionsUntilLongBreak} sessions completed`
-          }
-        </div>
+          <div className="text-center mt-3 text-sm text-gray-600 dark:text-gray-400">
+            {currentCyclePosition === 0 && state.sessionsCompleted > 0
+              ? `Completed ${Math.floor(state.sessionsCompleted / sessionsUntilLongBreak)} full cycle${Math.floor(state.sessionsCompleted / sessionsUntilLongBreak) !== 1 ? 's' : ''}!`
+              : `${currentCyclePosition} of ${sessionsUntilLongBreak} sessions completed`
+            }
+          </div>
 
-        {/* Total sessions counter */}
-        <div className="text-center mt-2 text-xs text-gray-500 dark:text-gray-500">
-          Total work sessions: {state.sessionsCompleted}
+          {/* Total sessions counter */}
+          <div className="text-center mt-2 text-xs text-gray-500 dark:text-gray-500">
+            Total work sessions: {state.sessionsCompleted}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Quick Mode Switch */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           onClick={() => switchMode('work', false)}
           disabled={state.mode === 'work'}
@@ -592,6 +699,19 @@ const switchMode = useCallback(
           `}
         >
           Long Break
+        </button>
+        <button
+          onClick={() => switchMode('stopwatch', false)}
+          disabled={state.mode === 'stopwatch'}
+          className={`
+            p-3 rounded-lg text-sm font-medium transition-colors
+            ${state.mode === 'stopwatch'
+              ? 'bg-orange-500 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }
+          `}
+        >
+          Stopwatch
         </button>
       </div>
     </div>

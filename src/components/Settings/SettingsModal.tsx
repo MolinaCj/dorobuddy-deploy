@@ -426,6 +426,28 @@ const handleSubmit = async (e: React.FormEvent) => {
                       </span>
                     </label>
                   </div>
+
+                  {/* Stopwatch Mode Info */}
+                  <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <Clock className="w-5 h-5 text-orange-600 mt-0.5 mr-3" />
+                      <div>
+                        <h4 className="font-medium text-orange-800 dark:text-orange-200">
+                          Stopwatch Mode
+                        </h4>
+                        <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+                          The stopwatch mode allows you to track time without a preset duration. 
+                          It counts up from zero and can be paused and reset as needed. 
+                          Perfect for tracking time spent on tasks or activities.
+                        </p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                          • Access via the "Stopwatch" button in the timer interface
+                          • Time is not recorded in the heatmap by default
+                          • Can be paused and resumed at any time
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
