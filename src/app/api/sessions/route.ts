@@ -64,20 +64,25 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error('Error creating session:', error);
       return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
     }
+
+    console.log('Session created successfully:', session);
 
     // Update daily_stats table
     const today = new Date().toISOString().split('T')[0];
     const sessionDuration = actual_duration || planned_duration;
     
     // Get current daily stats
-    const { data: existingStats } = await supabase
+    const { data: existingStats, error: statsError } = await supabase
       .from('daily_stats')
       .select('*')
       .eq('user_id', user.id)
       .eq('date', today)
       .single();
+
+    console.log('Daily stats query result:', { existingStats, statsError, today, userId: user.id });
 
     if (existingStats) {
       // Update existing stats
@@ -99,6 +104,8 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error('Error updating daily stats:', updateError);
+      } else {
+        console.log('Daily stats updated successfully');
       }
     } else {
       // Create new daily stats
@@ -117,6 +124,8 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('Error creating daily stats:', insertError);
+      } else {
+        console.log('Daily stats created successfully');
       }
     }
 

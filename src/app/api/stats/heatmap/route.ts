@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`Found ${dailyStats?.length || 0} daily stats for user ${user.id}`);
+    console.log('Daily stats data:', dailyStats);
 
     // Convert daily stats to heatmap format, including stopwatch time
     const data = (dailyStats || []).map(stat => {
