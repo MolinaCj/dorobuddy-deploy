@@ -41,6 +41,33 @@ export function useSpotify() {
     }
   }, [user])
 
+  // Check for Spotify connection status from URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const spotifyConnected = urlParams.get('spotify_connected')
+    const spotifyError = urlParams.get('spotify_error')
+
+    if (spotifyConnected === 'true') {
+      // Spotify connected successfully, refresh connection status
+      setState(prev => ({ ...prev, loading: false }))
+      checkSpotifyConnection()
+      
+      // Clear URL parameters
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }
+
+    if (spotifyError) {
+      // Spotify connection failed
+      setState(prev => ({ ...prev, loading: false }))
+      console.error('Spotify connection error:', spotifyError)
+      
+      // Clear URL parameters
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }
+  }, [])
+
   const checkSpotifyConnection = async () => {
     try {
       const response = await fetch('/api/spotify/status')
@@ -64,36 +91,8 @@ export function useSpotify() {
       const response = await fetch('/api/spotify/auth')
       const { auth_url } = await response.json()
 
-      // Open popup window
-      const popup = window.open(auth_url, 'spotify-auth', 'width=600,height=600')
-      
-      // Listen for callback
-      const handleCallback = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return
-        
-        if (event.data.type === 'SPOTIFY_AUTH_SUCCESS') {
-          setState(prev => ({ ...prev, isConnected: true, loading: false }))
-          popup?.close()
-          window.removeEventListener('message', handleCallback)
-          
-          // Initialize player after connection
-          initializePlayer()
-        } else if (event.data.type === 'SPOTIFY_AUTH_ERROR') {
-          setState(prev => ({ ...prev, loading: false }))
-          console.error('Spotify auth error:', event.data.error)
-        }
-      }
-
-      window.addEventListener('message', handleCallback)
-      
-      // Cleanup on popup close
-      const checkClosed = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkClosed)
-          window.removeEventListener('message', handleCallback)
-          setState(prev => ({ ...prev, loading: false }))
-        }
-      }, 1000)
+      // Redirect to Spotify auth (this will redirect back to callback)
+      window.location.href = auth_url
 
     } catch (error) {
       console.error('Spotify connection failed:', error)
