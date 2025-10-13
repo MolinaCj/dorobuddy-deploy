@@ -23,11 +23,14 @@ export default function HomePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSession, setActiveSession] = useState<string | null>(null)
   // Use real heatmap data instead of mock data
-  const { data: heatmapData, loading: heatmapLoading, error: heatmapError } = useHeatmapData()
+  const { data: heatmapData, loading: heatmapLoading, error: heatmapError, refetch: refetchHeatmap } = useHeatmapData()
 
   const handleSessionComplete = (sessionId: string) => {
     console.log('Session completed:', sessionId)
     setActiveSession(null)
+    
+    // Refresh heatmap data to show the new session
+    refetchHeatmap()
     
     // Show notification if permission granted
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -292,12 +295,26 @@ export default function HomePage() {
                   </p>
                 </div>
               ) : heatmapData ? (
-                <Heatmap
-                  data={heatmapData}
-                  compact={false}
-                  showLegend={true}
-                  showStats={true}
-                />
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Your Activity Heatmap
+                    </h2>
+                    <button
+                      onClick={refetchHeatmap}
+                      disabled={heatmapLoading}
+                      className="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-md transition-colors"
+                    >
+                      {heatmapLoading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                  </div>
+                  <Heatmap
+                    data={heatmapData}
+                    compact={false}
+                    showLegend={true}
+                    showStats={true}
+                  />
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-gray-500 dark:text-gray-400 mb-2">No activity data available</p>
