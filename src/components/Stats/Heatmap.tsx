@@ -395,38 +395,37 @@ export default function Heatmap({
       {/* Header with Enhanced Stats */}
       {showStats && (
         <div className="space-y-4">
-          {/* Primary Stats */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-              <div className="flex items-center space-x-1">
-                <Target className="w-4 h-4" />
-                <span>{stats.totalSessions} sessions</span>
+          {/* Primary Stats - Mobile Responsive */}
+          <div className="space-y-3">
+            {/* Mobile: Stack vertically on small screens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:justify-between gap-3 lg:gap-4">
+              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                <Target className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{stats.totalSessions} sessions</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-4 h-4" />
-                <span>{stats.activeDays}/{stats.totalDays} days active</span>
+              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{stats.activeDays}/{stats.totalDays} days active</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <Flame className="w-4 h-4" />
-                <span>{stats.currentStreak} day streak</span>
+              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                <Flame className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{stats.currentStreak} day streak</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <TrendingUp className="w-4 h-4" />
-                <span>{stats.averageSessions} sessions/day</span>
+              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+                <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{stats.averageSessions} sessions/day</span>
               </div>
               {stats.averageTotalFocusHoursPerDay > 0 && (
-                <div className="flex items-center space-x-1">
-                  <Clock className="w-4 h-4 text-blue-500" />
-                  <span className="text-blue-600 dark:text-blue-400">
-                    {stats.averageTotalFocusHoursPerDay}h/day
-                  </span>
+                <div className="flex items-center space-x-1 text-sm text-blue-600 dark:text-blue-400">
+                  <Clock className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{stats.averageTotalFocusHoursPerDay}h/day</span>
                 </div>
               )}
             </div>
           </div>
           
-          {/* Activity Level & Enhanced Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          {/* Activity Level & Enhanced Metrics - Mobile Responsive */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 text-sm">
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Activity Level</div>
               <div className={`font-semibold ${
@@ -691,10 +690,10 @@ export default function Heatmap({
         );
       })()}
 
-      {/* Summary Stats */}
+      {/* Summary Stats - Mobile Responsive */}
       {!compact && (
-        <div className={`grid gap-4 pt-4 border-t border-gray-200 dark:border-gray-700 ${
-          stats.totalStopwatchMinutes > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'
+        <div className={`grid gap-3 sm:gap-4 pt-4 border-t border-gray-200 dark:border-gray-700 ${
+          stats.totalStopwatchMinutes > 0 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4'
         }`}>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
