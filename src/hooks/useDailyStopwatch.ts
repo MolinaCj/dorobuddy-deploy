@@ -127,7 +127,24 @@ export function useDailyStopwatch() {
     });
   }, [user, getTodayPhilippine, isNewDay, saveDailyData]);
 
-  // Reset today's total (when user manually resets stopwatch)
+  // Reset accumulated time tracking (when user manually resets stopwatch timer)
+  const resetAccumulatedTime = useCallback(() => {
+    if (!user) return;
+
+    setDailyData(prev => {
+      if (!prev) return prev;
+      
+      const updatedData: DailyStopwatchData = {
+        ...prev,
+        lastAccumulatedTime: 0,
+        lastUpdated: new Date().toISOString()
+      };
+      saveDailyData(updatedData);
+      return updatedData;
+    });
+  }, [user, saveDailyData]);
+
+  // Reset today's total (only for testing or manual reset - not used in normal flow)
   const resetToday = useCallback(() => {
     if (!user) return;
 
@@ -200,6 +217,7 @@ export function useDailyStopwatch() {
     loading,
     error,
     addTime,
+    resetAccumulatedTime,
     resetToday,
     getTodayTotal,
     getFormattedTime,

@@ -29,7 +29,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
   const { saveSession } = useStopwatch()
-  const { addTime, resetToday, getTodayTotal } = useDailyStopwatch()
+  const { addTime, resetAccumulatedTime, getTodayTotal } = useDailyStopwatch()
   
 
   // Timer state
@@ -392,7 +392,10 @@ const switchMode = useCallback(
         stopwatchStartTimeRef.current = null
       }
       
-      // Note: Daily total is only reset automatically at 12am Philippine time, not when manually resetting
+      // Reset accumulated time tracking when resetting stopwatch (but keep daily total)
+      if (prev.mode === 'stopwatch') {
+        resetAccumulatedTime()
+      }
       
       return {
         ...prev,
