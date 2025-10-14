@@ -6,6 +6,7 @@ import { Play, Pause, RotateCcw, Settings, Coffee, Zap, SkipForward, Clock } fro
 import { useSettings } from '@/hooks/useSettings'
 import { useAudio } from '@/hooks/useAudio'
 import { useStopwatch } from '@/hooks/useStopwatch'
+import { useDailyStopwatch } from '@/hooks/useDailyStopwatch'
 
 interface TimerProps {
   selectedTaskId?: string
@@ -28,6 +29,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
   const { saveSession } = useStopwatch()
+  const { addTime, resetToday, getTodayTotal } = useDailyStopwatch()
   
 
   // Timer state
@@ -294,6 +296,9 @@ const switchMode = useCallback(
         const endTime = new Date()
         const duration = prev.stopwatchTime
         
+        // Add to daily total
+        addTime(duration)
+        
         // Save stopwatch session in background (don't await to avoid blocking UI)
         saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
           .then((session) => {
@@ -369,6 +374,9 @@ const switchMode = useCallback(
         const endTime = new Date()
         const duration = prev.stopwatchTime
         
+        // Add to daily total
+        addTime(duration)
+        
         // Save stopwatch session in background
         saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
           .then((session) => {
@@ -379,6 +387,11 @@ const switchMode = useCallback(
           })
         
         stopwatchStartTimeRef.current = null
+      }
+      
+      // If resetting stopwatch (regardless of whether it was running), reset daily total
+      if (prev.mode === 'stopwatch') {
+        resetToday()
       }
       
       return {
@@ -537,6 +550,11 @@ const switchMode = useCallback(
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 {state.isActive ? 'In Progress' : 'Paused'} {/* Removed reverse mode text */}
               </div>
+              {state.mode === 'stopwatch' && (
+                <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  Today: {getTodayTotal().formatted}
+                </div>
+              )}
             </div>
           </div>
         </div>

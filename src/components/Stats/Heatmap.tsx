@@ -301,6 +301,15 @@ export default function Heatmap({
     const totalStopwatchMinutes = Math.round(totalStopwatchTime / 60);
     const totalStopwatchHours = Math.round(totalStopwatchMinutes / 60 * 10) / 10;
     
+    // Calculate average stopwatch hours per day
+    const stopwatchActiveDays = gridData.filter(d => {
+      const stopwatchTime = (d as any).stopwatch_time || 0;
+      return stopwatchTime > 0;
+    }).length;
+    const averageStopwatchHoursPerDay = stopwatchActiveDays > 0 
+      ? Math.round((totalStopwatchHours / stopwatchActiveDays) * 10) / 10 
+      : 0;
+    
     // Calculate total focus time (Pomodoro + Stopwatch)
     const totalFocusTime = gridData.reduce((sum, d) => {
       const totalTimeMinutes = (d as any).total_time_minutes || 0;
@@ -346,6 +355,7 @@ export default function Heatmap({
       // New stopwatch statistics
       totalStopwatchMinutes,
       totalStopwatchHours,
+      averageStopwatchHoursPerDay,
       totalFocusTime,
       totalFocusHours,
       recentStopwatchMinutes,
@@ -438,6 +448,9 @@ export default function Heatmap({
                 </div>
                 <div className="text-xs text-orange-500 dark:text-orange-500 mt-1">
                   {stats.totalStopwatchMinutes} minutes
+                </div>
+                <div className="text-xs text-orange-500 dark:text-orange-500 mt-1">
+                  Avg: {stats.averageStopwatchHoursPerDay}h/day
                 </div>
               </div>
             )}
