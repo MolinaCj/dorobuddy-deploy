@@ -554,12 +554,24 @@ const switchMode = useCallback(
                 {state.isActive ? 'In Progress' : 'Paused'} {/* Removed reverse mode text */}
               </div>
               {state.mode === 'stopwatch' && (
-                <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                  <div className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-1">
-                    Today's Total
-                  </div>
-                  <div className="text-2xl font-bold text-orange-700 dark:text-orange-300 tabular-nums">
-                    {getTodayTotal().formatted}
+                <div className="mt-6 relative">
+                  <div className="bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/30 dark:to-orange-800/20 rounded-2xl p-4 border border-orange-300/50 dark:border-orange-700/50 shadow-lg backdrop-blur-sm">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-2"></div>
+                      <div className="text-sm font-semibold text-orange-700 dark:text-orange-300 tracking-wide uppercase">
+                        Today's Total
+                      </div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse ml-2"></div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-black text-orange-800 dark:text-orange-200 tabular-nums tracking-tight">
+                        {getTodayTotal().formatted}
+                      </div>
+                      <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                        Accumulated Time
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-2xl pointer-events-none"></div>
                   </div>
                 </div>
               )}
