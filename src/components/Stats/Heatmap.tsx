@@ -317,6 +317,15 @@ export default function Heatmap({
     }, 0);
     const totalFocusHours = Math.round(totalFocusTime / 60 * 10) / 10;
     
+    // Calculate average total focus hours per day (Pomodoro + Stopwatch)
+    const totalActiveDays = gridData.filter(d => {
+      const totalTimeMinutes = (d as any).total_time_minutes || 0;
+      return totalTimeMinutes > 0;
+    }).length;
+    const averageTotalFocusHoursPerDay = totalActiveDays > 0 
+      ? Math.round((totalFocusHours / totalActiveDays) * 10) / 10 
+      : 0;
+    
     // Calculate activity consistency
     const consistency = activeDays / Math.max(totalDays, 1) * 100;
     
@@ -356,6 +365,7 @@ export default function Heatmap({
       totalStopwatchMinutes,
       totalStopwatchHours,
       averageStopwatchHoursPerDay,
+      averageTotalFocusHoursPerDay,
       totalFocusTime,
       totalFocusHours,
       recentStopwatchMinutes,
@@ -387,8 +397,16 @@ export default function Heatmap({
               </div>
               <div className="flex items-center space-x-1">
                 <TrendingUp className="w-4 h-4" />
-                <span>{stats.averageSessions} avg/day</span>
+                <span>{stats.averageSessions} sessions/day</span>
               </div>
+              {stats.averageTotalFocusHoursPerDay > 0 && (
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-4 h-4 text-blue-500" />
+                  <span className="text-blue-600 dark:text-blue-400">
+                    {stats.averageTotalFocusHoursPerDay}h/day
+                  </span>
+                </div>
+              )}
               {stats.totalStopwatchMinutes > 0 && (
                 <div className="flex items-center space-x-1">
                   <Clock className="w-4 h-4 text-orange-500" />
@@ -449,7 +467,7 @@ export default function Heatmap({
                 <div className="text-xs text-orange-500 dark:text-orange-500 mt-1">
                   {stats.totalStopwatchMinutes} minutes
                 </div>
-                <div className="text-xs text-orange-500 dark:text-orange-500 mt-1">
+                <div className="text-sm font-medium text-orange-600 dark:text-orange-400 mt-1">
                   Avg: {stats.averageStopwatchHoursPerDay}h/day
                 </div>
               </div>
