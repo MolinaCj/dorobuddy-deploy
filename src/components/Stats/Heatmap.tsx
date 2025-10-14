@@ -175,6 +175,10 @@ export default function Heatmap({
         isToday: processDate.getTime() === today.getTime(),
         isCurrentMonth: processDate.getMonth() === today.getMonth() && 
                         processDate.getFullYear() === today.getFullYear(),
+        // Preserve additional data from API
+        pomodoro_sessions: dayData?.pomodoro_sessions || 0,
+        stopwatch_time: dayData?.stopwatch_time || 0,
+        total_time_minutes: dayData?.total_time_minutes || 0,
       });
 
       processDate.setDate(processDate.getDate() + 1);

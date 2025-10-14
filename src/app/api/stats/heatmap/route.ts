@@ -15,12 +15,18 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
 
-    // Default to last 365 days if no dates provided
+    // Default to last year (365 or 366 days) if no dates provided
     // Use Philippine time (UTC+8) for date calculation
     const philippineTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
     const defaultEndDate = philippineTime;
     const defaultStartDate = new Date(philippineTime);
-    defaultStartDate.setDate(defaultEndDate.getDate() - 365);
+    
+    // Calculate days in the current year (365 or 366 for leap year)
+    const currentYear = philippineTime.getFullYear();
+    const isLeapYear = (currentYear % 4 === 0 && currentYear % 100 !== 0) || (currentYear % 400 === 0);
+    const daysInYear = isLeapYear ? 366 : 365;
+    
+    defaultStartDate.setDate(defaultEndDate.getDate() - daysInYear);
 
     const queryStartDate = startDate || defaultStartDate.toISOString().split('T')[0];
     const queryEndDate = endDate || defaultEndDate.toISOString().split('T')[0];
