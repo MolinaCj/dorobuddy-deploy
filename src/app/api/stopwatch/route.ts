@@ -91,7 +91,10 @@ export async function POST(request: NextRequest) {
     console.log('Stopwatch session created successfully:', session);
 
     // Update daily_stats table with stopwatch time
-    const today = new Date().toISOString().split('T')[0];
+    // Use Philippine time (UTC+8) for date calculation
+    const philippineTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const today = philippineTime.toISOString().split('T')[0];
+    console.log(`Stopwatch API: Updating daily stats for date: ${today} (Philippine time)`);
     
     // Get current daily stats
     const { data: existingStats, error: statsError } = await supabase

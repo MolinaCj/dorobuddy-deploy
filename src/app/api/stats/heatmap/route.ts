@@ -16,12 +16,16 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('end_date');
 
     // Default to last 365 days if no dates provided
-    const defaultEndDate = new Date();
-    const defaultStartDate = new Date();
+    // Use Philippine time (UTC+8) for date calculation
+    const philippineTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const defaultEndDate = philippineTime;
+    const defaultStartDate = new Date(philippineTime);
     defaultStartDate.setDate(defaultEndDate.getDate() - 365);
 
     const queryStartDate = startDate || defaultStartDate.toISOString().split('T')[0];
     const queryEndDate = endDate || defaultEndDate.toISOString().split('T')[0];
+
+    console.log(`Heatmap API: Querying daily stats from ${queryStartDate} to ${queryEndDate}`);
 
     // Get daily stats from the database
     const { data: dailyStats, error } = await supabase
