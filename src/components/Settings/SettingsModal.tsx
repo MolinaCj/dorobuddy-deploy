@@ -1,13 +1,12 @@
 // components/Settings/SettingsModal.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  X, Save, Clock, Volume2, Palette, Bell, Music, 
+  X, Save, Clock, Volume2, Palette, Bell, 
   Play, Pause, Download, Upload, RotateCcw 
 } from 'lucide-react';
 import { UserSettings, UpdateSettingsRequest } from '@/types/api';
 import { useSettings } from '@/hooks/useSettings';
 import { useAudio } from '@/hooks/useAudio';
-import { useSpotify } from '@/hooks/useSpotify';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -25,7 +24,6 @@ const TABS: TabConfig[] = [
   { id: 'audio', label: 'Sound', icon: <Volume2 className="w-4 h-4" /> },
   { id: 'theme', label: 'Theme', icon: <Palette className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
-  { id: 'music', label: 'Music', icon: <Music className="w-4 h-4" /> },
 ];
 
 const THEMES = [
@@ -47,9 +45,8 @@ const SOUND_OPTIONS = [
 ];
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, updateSettings, loading, syncSpotifyStatus } = useSettings();
+  const { settings, updateSettings, loading } = useSettings();
   const { playSound, preloadSound } = useAudio();
-  const { isConnected, connect, disconnect } = useSpotify();
   
   const [activeTab, setActiveTab] = useState('timer');
   const [formData, setFormData] = useState<UpdateSettingsRequest>({});
@@ -71,22 +68,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         break_sound: settings.break_sound,
         master_volume: settings.master_volume,
         notification_volume: settings.notification_volume,
-        music_volume: settings.music_volume,
         ambient_volume: settings.ambient_volume,
-        spotify_enabled: settings.spotify_enabled,
       });
     }
   }, [settings]);
 
-  // Sync Spotify connection status with form data
-  useEffect(() => {
-    if (settings) {
-      setFormData(prev => ({
-        ...prev,
-        spotify_enabled: isConnected
-      }));
-    }
-  }, [isConnected, settings]);
 
   // Handle input changes
   const handleInputChange = (field: keyof UpdateSettingsRequest, value: any) => {
@@ -118,29 +104,6 @@ const handleSubmit = async (e: React.FormEvent) => {
 };
 
 
-  // Handle Spotify connection
-  const handleSpotifyConnect = async () => {
-    try {
-      await connect();
-      await syncSpotifyStatus(true);
-      setFormData(prev => ({ ...prev, spotify_enabled: true }));
-      setHasChanges(true);
-    } catch (error) {
-      console.error('Failed to connect to Spotify:', error);
-    }
-  };
-
-  // Handle Spotify disconnection
-  const handleSpotifyDisconnect = async () => {
-    try {
-      await disconnect();
-      await syncSpotifyStatus(false);
-      setFormData(prev => ({ ...prev, spotify_enabled: false }));
-      setHasChanges(true);
-    } catch (error) {
-      console.error('Failed to disconnect from Spotify:', error);
-    }
-  };
 
   // Handle reset to defaults
   const handleReset = () => {
@@ -158,9 +121,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       break_sound: 'chime',
       master_volume: 0.7,
       notification_volume: 0.8,
-      music_volume: 0.5,
       ambient_volume: 0.3,
-      spotify_enabled: false,
     };
     
     setFormData(defaults);
@@ -214,7 +175,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           'work_duration', 'short_break_duration', 'long_break_duration',
           'sessions_until_long_break', 'auto_start_breaks', 'auto_start_pomodoros',
           'theme', 'notification_sound', 'break_sound', 'master_volume',
-          'notification_volume', 'music_volume', 'ambient_volume', 'spotify_enabled'
+          'notification_volume', 'ambient_volume'
         ];
         
         const sanitizedData: UpdateSettingsRequest = {};
@@ -490,20 +451,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Music Volume: {Math.round((formData.music_volume || 0.5) * 100)}%
-                      </label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={formData.music_volume || 0.5}
-                        onChange={(e) => handleInputChange('music_volume', parseFloat(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -714,78 +661,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
               )}
 
-              {/* Music Settings */}
-              {activeTab === 'music' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Music Integration
-                  </h3>
-
-                  {/* Spotify Integration */}
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white">Spotify</h4>
-                        <p className="text-sm text-gray-500">
-                          Connect your Spotify account for music playback
-                        </p>
-                      </div>
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.spotify_enabled || false}
-                          onChange={(e) => handleInputChange('spotify_enabled', e.target.checked)}
-                          className="sr-only"
-                        />
-                        <div className={`
-                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${formData.spotify_enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}
-                        `}>
-                          <span className={`
-                            inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                            ${formData.spotify_enabled ? 'translate-x-6' : 'translate-x-1'}
-                          `} />
-                        </div>
-                      </label>
-                    </div>
-
-                    {formData.spotify_enabled && (
-                      <div className="space-y-3">
-                        {isConnected ? (
-                          <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span className="text-sm text-green-700 dark:text-green-300">Spotify Connected</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleSpotifyDisconnect}
-                              className="text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              Disconnect
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleSpotifyConnect}
-                            className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                          >
-                            Connect to Spotify
-                          </button>
-                        )}
-                        
-                        <div className="text-xs text-gray-500">
-                          <p>• Requires Spotify Premium for full functionality</p>
-                          <p>• Free accounts can use playlist previews</p>
-                          <p>• Music will pause during focus sessions (optional)</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              )}
             </form>
           </div>
         </div>
