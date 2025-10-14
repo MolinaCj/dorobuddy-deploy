@@ -1,4 +1,4 @@
-// src/lib/supabase.ts - Complete Supabase Client Setup
+// src/lib/supabase.ts - Centralized Supabase Client Setup
 'use client'
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -12,13 +12,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env.local file.')
 }
 
-// Client-side Supabase client (for use in components)
+// Singleton pattern to prevent multiple client instances
+let browserClientInstance: ReturnType<typeof createClientComponentClient<Database>> | null = null
+let defaultClientInstance: ReturnType<typeof createClient<Database>> | null = null
+
+// Client-side Supabase client (singleton)
 export const createBrowserClient = () => {
-  return createClientComponentClient<Database>()
+  if (!browserClientInstance) {
+    browserClientInstance = createClientComponentClient<Database>()
+  }
+  return browserClientInstance
 }
 
-// Default client (backwards compatibility)
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+// Default client (singleton for backwards compatibility)
+export const supabase = (() => {
+  if (!defaultClientInstance) {
+    defaultClientInstance = createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }
+  return defaultClientInstance
+})()
 
 // Helper functions for common operations
 export const getCurrentUser = async () => {

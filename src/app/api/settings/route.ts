@@ -1,6 +1,5 @@
 // src/app/api/settings/route.ts
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 import type { Database } from '@/types/supabase'
 
@@ -18,23 +17,15 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log('🔧 [Settings API] Creating Supabase client')
-    const supabase = createRouteHandlerClient<Database>({ cookies })
-
     console.log('🔧 [Settings API] Getting authenticated user')
-    // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
+    const { user, error: authError } = await getAuthenticatedUser()
+    
     if (authError || !user) {
-      console.log('❌ [Settings API] Authentication failed:', authError?.message || 'No user')
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      console.error('❌ [Settings API] Authentication failed:', authError)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const supabase = createServerClient()
 
     console.log('✅ [Settings API] User authenticated:', user.id)
 
@@ -114,13 +105,7 @@ export async function GET(request: Request) {
 // PUT /api/settings - Update user settings
 export async function PUT(request: Request) {
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
-
-    // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser()
 
     if (authError || !user) {
       return NextResponse.json(
@@ -128,6 +113,8 @@ export async function PUT(request: Request) {
         { status: 401 }
       )
     }
+
+    const supabase = createServerClient()
 
     // Parse request body
     const body = await request.json()
@@ -214,13 +201,7 @@ export async function PUT(request: Request) {
 // DELETE /api/settings - Reset settings to defaults
 export async function DELETE(request: Request) {
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
-
-    // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser()
 
     if (authError || !user) {
       return NextResponse.json(
@@ -228,6 +209,8 @@ export async function DELETE(request: Request) {
         { status: 401 }
       )
     }
+
+    const supabase = createServerClient()
 
     // Delete existing settings
     const { error: deleteError } = await supabase
