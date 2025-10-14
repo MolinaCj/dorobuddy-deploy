@@ -109,6 +109,9 @@ const switchMode = useCallback(
         const endTime = new Date()
         const duration = prev.stopwatchTime
         
+        // Add to daily total (pass current total time for proper accumulation)
+        addTime(duration)
+        
         // Save stopwatch session in background
         saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
           .then((session) => {
@@ -296,7 +299,7 @@ const switchMode = useCallback(
         const endTime = new Date()
         const duration = prev.stopwatchTime
         
-        // Add to daily total
+        // Add to daily total (pass current total time for proper accumulation)
         addTime(duration)
         
         // Save stopwatch session in background (don't await to avoid blocking UI)
@@ -374,7 +377,7 @@ const switchMode = useCallback(
         const endTime = new Date()
         const duration = prev.stopwatchTime
         
-        // Add to daily total
+        // Add to daily total (pass current total time for proper accumulation)
         addTime(duration)
         
         // Save stopwatch session in background
@@ -389,10 +392,7 @@ const switchMode = useCallback(
         stopwatchStartTimeRef.current = null
       }
       
-      // If resetting stopwatch (regardless of whether it was running), reset daily total
-      if (prev.mode === 'stopwatch') {
-        resetToday()
-      }
+      // Note: Daily total is only reset automatically at 12am Philippine time, not when manually resetting
       
       return {
         ...prev,
@@ -580,14 +580,16 @@ const switchMode = useCallback(
           )}
         </button>
 
-        <button
-          onClick={skipSession}
-          className="p-4 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition-colors"
-          aria-label="Skip to next session"
-          title="Skip to next session"
-        >
-          <SkipForward className="w-6 h-6" />
-        </button>
+        {state.mode !== 'stopwatch' && (
+          <button
+            onClick={skipSession}
+            className="p-4 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition-colors"
+            aria-label="Skip to next session"
+            title="Skip to next session"
+          >
+            <SkipForward className="w-6 h-6" />
+          </button>
+        )}
 
         <button
           onClick={resetTimer}

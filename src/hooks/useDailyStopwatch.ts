@@ -5,6 +5,7 @@ interface DailyStopwatchData {
   totalTimeSeconds: number;
   lastUpdated: string;
   date: string; // YYYY-MM-DD format in Philippine time
+  lastAccumulatedTime: number; // Last time that was added to daily total
 }
 
 export function useDailyStopwatch() {
@@ -48,7 +49,8 @@ export function useDailyStopwatch() {
           const newData: DailyStopwatchData = {
             totalTimeSeconds: 0,
             lastUpdated: new Date().toISOString(),
-            date: getTodayPhilippine()
+            date: getTodayPhilippine(),
+            lastAccumulatedTime: 0
           };
           setDailyData(newData);
           localStorage.setItem(key, JSON.stringify(newData));
@@ -60,7 +62,8 @@ export function useDailyStopwatch() {
         const newData: DailyStopwatchData = {
           totalTimeSeconds: 0,
           lastUpdated: new Date().toISOString(),
-          date: getTodayPhilippine()
+          date: getTodayPhilippine(),
+          lastAccumulatedTime: 0
         };
         setDailyData(newData);
         localStorage.setItem(key, JSON.stringify(newData));
@@ -85,9 +88,9 @@ export function useDailyStopwatch() {
     }
   }, [user]);
 
-  // Add time to today's total
-  const addTime = useCallback((seconds: number) => {
-    if (!user || seconds <= 0) return;
+  // Add time to today's total (only the new time since last pause)
+  const addTime = useCallback((currentTotalSeconds: number) => {
+    if (!user || currentTotalSeconds < 0) return;
 
     const today = getTodayPhilippine();
     
@@ -95,23 +98,27 @@ export function useDailyStopwatch() {
       const currentData = prev || {
         totalTimeSeconds: 0,
         lastUpdated: new Date().toISOString(),
-        date: today
+        date: today,
+        lastAccumulatedTime: 0
       };
 
       // If it's a new day, reset
       if (isNewDay(currentData.date)) {
         const newData: DailyStopwatchData = {
-          totalTimeSeconds: seconds,
+          totalTimeSeconds: currentTotalSeconds,
           lastUpdated: new Date().toISOString(),
-          date: today
+          date: today,
+          lastAccumulatedTime: currentTotalSeconds
         };
         saveDailyData(newData);
         return newData;
       } else {
-        // Add to existing total
+        // Only add the difference (new time since last pause)
+        const newTimeToAdd = currentTotalSeconds - currentData.lastAccumulatedTime;
         const updatedData: DailyStopwatchData = {
           ...currentData,
-          totalTimeSeconds: currentData.totalTimeSeconds + seconds,
+          totalTimeSeconds: currentData.totalTimeSeconds + newTimeToAdd,
+          lastAccumulatedTime: currentTotalSeconds,
           lastUpdated: new Date().toISOString()
         };
         saveDailyData(updatedData);
@@ -128,7 +135,8 @@ export function useDailyStopwatch() {
     const newData: DailyStopwatchData = {
       totalTimeSeconds: 0,
       lastUpdated: new Date().toISOString(),
-      date: today
+      date: today,
+      lastAccumulatedTime: 0
     };
     saveDailyData(newData);
   }, [user, getTodayPhilippine, saveDailyData]);
