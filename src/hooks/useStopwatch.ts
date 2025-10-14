@@ -237,14 +237,82 @@ export function useStopwatch() {
     taskId?: string,
     notes?: string
   ): Promise<StopwatchSession> => {
-    return createSession({
+    const sessionData = {
       task_id: taskId,
       duration_seconds: durationSeconds,
       started_at: startedAt.toISOString(),
       ended_at: endedAt.toISOString(),
       notes,
-    })
-  }, [createSession])
+    }
+
+    try {
+      // Try to save to server first
+      return await createSession(sessionData)
+    } catch (error) {
+      // If offline, save to localStorage for later sync
+      if (!navigator.onLine || error instanceof TypeError) {
+        console.log('Offline: Saving stopwatch session to localStorage')
+        const offlineSession: StopwatchSession = {
+          id: `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          user_id: user?.id || '',
+          task_id: taskId,
+          duration_seconds: durationSeconds,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          notes,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
+        // Save to localStorage
+        const key = `offline_stopwatch_sessions_${user?.id}`
+        const existingSessions = JSON.parse(localStorage.getItem(key) || '[]')
+        existingSessions.push(offlineSession)
+        localStorage.setItem(key, JSON.stringify(existingSessions))
+
+        return offlineSession
+      }
+      
+      // Re-throw if it's not an offline error
+      throw error
+    }
+  }, [createSession, user])
+
+  // Sync offline sessions when back online
+  const syncOfflineSessions = useCallback(async (): Promise<void> => {
+    if (!user || !navigator.onLine) return
+
+    const key = `offline_stopwatch_sessions_${user.id}`
+    const offlineSessions = JSON.parse(localStorage.getItem(key) || '[]')
+    
+    if (offlineSessions.length === 0) return
+
+    console.log(`Syncing ${offlineSessions.length} offline stopwatch sessions`)
+
+    try {
+      // Try to sync each offline session
+      for (const session of offlineSessions) {
+        try {
+          await createSession({
+            task_id: session.task_id,
+            duration_seconds: session.duration_seconds,
+            started_at: session.started_at,
+            ended_at: session.ended_at,
+            notes: session.notes,
+          })
+        } catch (error) {
+          console.error('Failed to sync offline session:', error)
+          // Continue with other sessions even if one fails
+        }
+      }
+
+      // Clear offline sessions after successful sync
+      localStorage.removeItem(key)
+      console.log('Offline stopwatch sessions synced successfully')
+    } catch (error) {
+      console.error('Failed to sync offline sessions:', error)
+    }
+  }, [user, createSession])
 
   return {
     loading,
@@ -255,5 +323,6 @@ export function useStopwatch() {
     updateSession,
     deleteSession,
     saveSession,
+    syncOfflineSessions,
   }
 }

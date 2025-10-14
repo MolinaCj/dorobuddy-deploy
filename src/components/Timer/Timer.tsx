@@ -28,7 +28,7 @@ interface TimerState {
 export default function Timer({ selectedTaskId, onSessionComplete, onOpenSettings }: TimerProps) {
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
-  const { saveSession } = useStopwatch()
+  const { saveSession, syncOfflineSessions } = useStopwatch()
   const { addTime, resetAccumulatedTime, syncAccumulatedTime, getTodayTotal } = useDailyStopwatch()
   
 
@@ -288,6 +288,25 @@ const switchMode = useCallback(
       }
     }
   }, [state.isActive, state.mode, state.stopwatchTime, handleTimerComplete]) // Added stopwatch dependencies
+
+  // Sync offline sessions when back online
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Back online: Syncing offline stopwatch sessions')
+      syncOfflineSessions()
+    }
+
+    window.addEventListener('online', handleOnline)
+    
+    // Also sync immediately if already online
+    if (navigator.onLine) {
+      syncOfflineSessions()
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [syncOfflineSessions])
 
   // Toggle play/pause
   const toggleTimer = async () => {
