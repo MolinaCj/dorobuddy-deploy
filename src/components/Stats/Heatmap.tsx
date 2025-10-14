@@ -422,14 +422,6 @@ export default function Heatmap({
                   </span>
                 </div>
               )}
-              {stats.totalStopwatchMinutes > 0 && (
-                <div className="flex items-center space-x-1">
-                  <Clock className="w-4 h-4 text-orange-500" />
-                  <span className="text-orange-600 dark:text-orange-400">
-                    {stats.totalStopwatchHours}h stopwatch
-                  </span>
-                </div>
-              )}
             </div>
           </div>
           
