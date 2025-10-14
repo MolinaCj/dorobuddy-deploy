@@ -88,6 +88,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('Stopwatch session created successfully:', session);
+
+    // Update daily_stats table with stopwatch time
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get current daily stats
+    const { data: existingStats, error: statsError } = await supabase
+      .from('daily_stats')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single();
+
+    console.log('Existing daily stats for today:', existingStats);
+
+    if (existingStats) {
+      // Update existing stats
+      const { error: updateError } = await supabase
+        .from('daily_stats')
+        .update({
+          total_stopwatch_time: (existingStats.total_stopwatch_time || 0) + duration_seconds,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('date', today);
+
+      if (updateError) {
+        console.error('Error updating daily stats:', updateError);
+      } else {
+        console.log('Daily stats updated with stopwatch time');
+      }
+    } else {
+      // Create new daily stats
+      const { error: insertError } = await supabase
+        .from('daily_stats')
+        .insert({
+          user_id: user.id,
+          date: today,
+          total_sessions: 0,
+          completed_sessions: 0,
+          total_work_time: 0,
+          total_break_time: 0,
+          total_stopwatch_time: duration_seconds,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        console.error('Error creating daily stats:', insertError);
+      } else {
+        console.log('New daily stats created with stopwatch time');
+      }
+    }
+
     return NextResponse.json({ session }, { status: 201 })
   } catch (error) {
     console.error('Error in stopwatch POST:', error)
