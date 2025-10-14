@@ -554,8 +554,13 @@ const switchMode = useCallback(
                 {state.isActive ? 'In Progress' : 'Paused'} {/* Removed reverse mode text */}
               </div>
               {state.mode === 'stopwatch' && (
-                <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                  Today: {getTodayTotal().formatted}
+                <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <div className="text-sm text-orange-600 dark:text-orange-400 font-medium mb-1">
+                    Today's Total
+                  </div>
+                  <div className="text-2xl font-bold text-orange-700 dark:text-orange-300 tabular-nums">
+                    {getTodayTotal().formatted}
+                  </div>
                 </div>
               )}
             </div>
