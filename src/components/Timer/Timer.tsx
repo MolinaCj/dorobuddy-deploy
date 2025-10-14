@@ -29,7 +29,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
   const { saveSession } = useStopwatch()
-  const { addTime, resetAccumulatedTime, getTodayTotal } = useDailyStopwatch()
+  const { addTime, resetAccumulatedTime, syncAccumulatedTime, getTodayTotal } = useDailyStopwatch()
   
 
   // Timer state
@@ -314,9 +314,11 @@ const switchMode = useCallback(
         stopwatchStartTimeRef.current = null
       }
       
-      // If starting stopwatch, record the start time
+      // If starting stopwatch, record the start time and sync accumulated time
       if (prev.mode === 'stopwatch' && !prev.isActive && newIsActive) {
         stopwatchStartTimeRef.current = new Date()
+        // Sync accumulated time with current stopwatch time to prevent incorrect calculations after page reload
+        syncAccumulatedTime(prev.stopwatchTime)
       }
       
       return { ...prev, isActive: newIsActive }

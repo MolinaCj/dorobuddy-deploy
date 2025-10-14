@@ -144,6 +144,23 @@ export function useDailyStopwatch() {
     });
   }, [user, saveDailyData]);
 
+  // Sync accumulated time with current stopwatch time (when stopwatch starts after page reload)
+  const syncAccumulatedTime = useCallback((currentStopwatchTime: number) => {
+    if (!user) return;
+
+    setDailyData(prev => {
+      if (!prev) return prev;
+      
+      const updatedData: DailyStopwatchData = {
+        ...prev,
+        lastAccumulatedTime: currentStopwatchTime,
+        lastUpdated: new Date().toISOString()
+      };
+      saveDailyData(updatedData);
+      return updatedData;
+    });
+  }, [user, saveDailyData]);
+
   // Reset today's total (only for testing or manual reset - not used in normal flow)
   const resetToday = useCallback(() => {
     if (!user) return;
@@ -218,6 +235,7 @@ export function useDailyStopwatch() {
     error,
     addTime,
     resetAccumulatedTime,
+    syncAccumulatedTime,
     resetToday,
     getTodayTotal,
     getFormattedTime,
