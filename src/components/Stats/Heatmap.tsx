@@ -3,6 +3,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Calendar, TrendingUp, Flame, Target, Clock } from 'lucide-react';
 import { HeatmapData, HeatmapResponse } from '@/types/api';
 import { useStats } from '@/hooks/useStats';
+import { useSettings } from '@/hooks/SettingsProvider';
 
 interface HeatmapProps {
   data: HeatmapResponse;
@@ -98,6 +99,7 @@ export default function Heatmap({
 }: HeatmapProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const { settings } = useSettings();
 
   // Determine user activity level based on their data
   const getUserActivityLevel = useMemo(() => {
@@ -675,7 +677,9 @@ export default function Heatmap({
                   if (totalTimeMinutes > 0) {
                     return `Total focus time: ${totalTimeMinutes} minutes`;
                   } else {
-                    return `Estimated focus time: ~${selectedDay.count * 25} minutes`;
+                    // Use actual work duration setting instead of hardcoded 25 minutes
+                    const workDurationMinutes = settings?.work_duration ? Math.round(settings.work_duration / 60) : 25;
+                    return `Estimated focus time: ~${selectedDay.count * workDurationMinutes} minutes`;
                   }
                 })()}
               </div>
