@@ -8,6 +8,21 @@ interface DailyStopwatchData {
   lastAccumulatedTime: number; // Last time that was added to daily total
 }
 
+interface DailyStats {
+  id: string;
+  user_id: string;
+  date: string;
+  total_sessions: number;
+  completed_sessions: number;
+  total_work_time: number;
+  total_break_time: number;
+  total_stopwatch_time: number;
+  tasks_completed: number;
+  intensity_level: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export function useDailyStopwatch() {
   const { user } = useAuth();
   const [dailyData, setDailyData] = useState<DailyStopwatchData | null>(null);
@@ -33,48 +48,93 @@ export function useDailyStopwatch() {
     return lastDate !== today;
   }, [getTodayPhilippine]);
 
-  // Load daily stopwatch data from localStorage
-  const loadDailyData = useCallback(() => {
+  // Fetch today's daily stats from server
+  const fetchTodayStats = useCallback(async () => {
+    if (!user) return null;
+
+    try {
+      setLoading(true);
+      const today = getTodayPhilippine();
+      
+      const response = await fetch(`/api/stats/daily?start_date=${today}&end_date=${today}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch today\'s stats');
+      }
+
+      const dailyStats: DailyStats[] = await response.json();
+      const todayStats = dailyStats.find(stat => stat.date === today);
+      
+      return todayStats || null;
+    } catch (err) {
+      console.error('Error fetching today\'s stats:', err);
+      setError('Failed to fetch today\'s stats');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [user, getTodayPhilippine]);
+
+  // Load daily stopwatch data from server and localStorage
+  const loadDailyData = useCallback(async () => {
     if (!user) return;
 
     try {
+      const today = getTodayPhilippine();
+      
+      // First, try to fetch from server
+      const serverStats = await fetchTodayStats();
+      
+      // Get localStorage data as fallback
       const key = `daily_stopwatch_${user.id}`;
       const stored = localStorage.getItem(key);
+      let localData: DailyStopwatchData | null = null;
       
       if (stored) {
-        const data: DailyStopwatchData = JSON.parse(stored);
-        
-        // Check if it's a new day, reset if so
-        if (isNewDay(data.date)) {
-          const newData: DailyStopwatchData = {
-            totalTimeSeconds: 0,
-            lastUpdated: new Date().toISOString(),
-            date: getTodayPhilippine(),
-            lastAccumulatedTime: 0
-          };
-          setDailyData(newData);
-          localStorage.setItem(key, JSON.stringify(newData));
-        } else {
-          setDailyData(data);
+        try {
+          localData = JSON.parse(stored);
+        } catch (err) {
+          console.error('Error parsing localStorage data:', err);
         }
-      } else {
-        // First time user, initialize
-        const newData: DailyStopwatchData = {
-          totalTimeSeconds: 0,
-          lastUpdated: new Date().toISOString(),
-          date: getTodayPhilippine(),
-          lastAccumulatedTime: 0
-        };
-        setDailyData(newData);
-        localStorage.setItem(key, JSON.stringify(newData));
       }
+
+      // Determine the correct total time
+      let totalTimeSeconds = 0;
+      let lastAccumulatedTime = 0;
+
+      if (serverStats) {
+        // Use server data as the source of truth
+        totalTimeSeconds = serverStats.total_stopwatch_time || 0;
+        
+        // If we have local data for today, use its lastAccumulatedTime
+        if (localData && !isNewDay(localData.date)) {
+          lastAccumulatedTime = localData.lastAccumulatedTime;
+        }
+      } else if (localData && !isNewDay(localData.date)) {
+        // Fallback to local data if server data is not available
+        totalTimeSeconds = localData.totalTimeSeconds;
+        lastAccumulatedTime = localData.lastAccumulatedTime;
+      }
+
+      const newData: DailyStopwatchData = {
+        totalTimeSeconds,
+        lastUpdated: new Date().toISOString(),
+        date: today,
+        lastAccumulatedTime
+      };
+
+      setDailyData(newData);
+      
+      // Update localStorage with the correct data
+      localStorage.setItem(key, JSON.stringify(newData));
+      
     } catch (err) {
       console.error('Error loading daily stopwatch data:', err);
       setError('Failed to load daily stopwatch data');
     }
-  }, [user, isNewDay, getTodayPhilippine]);
+  }, [user, isNewDay, getTodayPhilippine, fetchTodayStats]);
 
-  // Save daily stopwatch data to localStorage
+  // Save daily stopwatch data to localStorage (as cache)
   const saveDailyData = useCallback((data: DailyStopwatchData) => {
     if (!user) return;
 
@@ -218,7 +278,7 @@ export function useDailyStopwatch() {
     loadDailyData();
   }, [loadDailyData]);
 
-  // Check for new day every minute
+  // Check for new day every minute and refresh data
   useEffect(() => {
     const interval = setInterval(() => {
       if (dailyData && isNewDay(dailyData.date)) {
@@ -239,6 +299,7 @@ export function useDailyStopwatch() {
     resetToday,
     getTodayTotal,
     getFormattedTime,
-    isNewDay: dailyData ? isNewDay(dailyData.date) : false
+    isNewDay: dailyData ? isNewDay(dailyData.date) : false,
+    refreshData: loadDailyData // Expose refresh function for manual refresh
   };
 }
