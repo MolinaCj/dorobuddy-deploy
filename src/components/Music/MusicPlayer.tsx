@@ -1,12 +1,20 @@
 // components/Music/MusicPlayer.tsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, 
-  Shuffle, Repeat, Heart, ExternalLink, Music, X 
+  Shuffle, Repeat, Heart, ExternalLink, Music, X, ListMusic 
 } from 'lucide-react';
 import { useSpotify } from '@/hooks/useSpotify';
 import { useSettings } from '@/hooks/useSettings';
-import { Track, Playlist } from '@/types/api';
+import { Track } from '@/types/api';
+
+// Local playlist interface for built-in playlists
+interface LocalPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  tracks: Track[];
+}
 
 interface MusicPlayerProps {
   compact?: boolean;
@@ -54,62 +62,106 @@ export default function MusicPlayer({
     repeat: 'off',
   });
 
-  const [fallbackTracks] = useState<Track[]>([
+  // Define playlists
+  const [playlists] = useState<LocalPlaylist[]>([
     {
-      id: 'focus1',
-      name: 'Deep Focus',
-      artist: 'Focus Sounds',
-      duration: 180,
-      url: '/audio/ambient/deep-focus.mp3',
+      id: 'ambient-sounds',
+      name: 'Ambient Sounds',
+      description: 'Relaxing ambient sounds for focus and meditation',
+      tracks: [
+        {
+          id: 'focus1',
+          name: 'Deep Focus',
+          artist: 'Focus Sounds',
+          duration: 180,
+          url: '/audio/ambient/deep-focus.mp3',
+        },
+        {
+          id: 'nature1',
+          name: 'Forest Ambience',
+          artist: 'Nature Sounds',
+          duration: 240,
+          url: '/audio/ambient/forest.mp3',
+        },
+        {
+          id: 'ocean1',
+          name: 'Ocean Waves',
+          artist: 'Nature Sounds',
+          duration: 300,
+          url: '/audio/ambient/ocean-waves.mp3',
+        },
+        {
+          id: 'rain1',
+          name: 'Rainfall',
+          artist: 'Nature Sounds',
+          duration: 200,
+          url: '/audio/ambient/rain.wav',
+        },
+        {
+          id: 'cafe1',
+          name: 'Cafe',
+          artist: 'Cafe Ambience',
+          duration: 200,
+          url: '/audio/ambient/cafe.mp3',
+        },
+        {
+          id: 'whitenoise1',
+          name: 'White Noise',
+          artist: 'White Noise',
+          duration: 200,
+          url: '/audio/ambient/white-noise.mp3',
+        },
+        {
+          id: 'fireplace1',
+          name: 'Fire Place',
+          artist: 'Fire Place',
+          duration: 200,
+          url: '/audio/ambient/fireplace.mp3',
+        },
+      ]
     },
     {
-      id: 'nature1',
-      name: 'Forest Ambience',
-      artist: 'Nature Sounds',
-      duration: 240,
-      url: '/audio/ambient/forest.mp3',
-    },
-    {
-      id: 'ocean1',
-      name: 'Ocean Waves',
-      artist: 'Nature Sounds',
-      duration: 300,
-      url: '/audio/ambient/ocean-waves.mp3',
-    },
-    {
-      id: 'rain1',
-      name: 'Rainfall',
-      artist: 'Nature Sounds',
-      duration: 200,
-      url: '/audio/ambient/rain.wav',
-    },
-    {
-      id: 'cafe1',
-      name: 'Cafe',
-      artist: 'Cafe Ambience',
-      duration: 200,
-      url: '/audio/ambient/cafe.mp3',
-    },
-    {
-      id: 'whitenoise1',
-      name: 'White Noise',
-      artist: 'White Noise',
-      duration: 200,
-      url: '/audio/ambient/white-noise.mp3',
-    },
-    {
-      id: 'fireplace1',
-      name: 'Fire Place',
-      artist: 'Fire Place',
-      duration: 200,
-      url: '/audio/ambient/fireplace.mp3',
-    },
-    // Add more fallback tracks
+      id: 'gamma-waves',
+      name: 'Gamma Waves',
+      description: 'Binaural gamma waves for enhanced focus and concentration',
+      tracks: [
+        {
+          id: 'gamma1',
+          name: 'Gamma Wave1',
+          artist: 'Zenaida Tranquilis',
+          duration: 200,
+          url: '/audio/gamma-waves/gamma-wave1.mp3',
+        },
+        {
+          id: 'gamma2',
+          name: 'Gamma Wave2',
+          artist: 'Zenaida Tranquilis',
+          duration: 200,
+          url: '/audio/gamma-waves/gamma-wave2.mp3',
+        },
+        {
+          id: 'gamma3',
+          name: 'Gamma Wave3',
+          artist: 'Calmaara Serenitea',
+          duration: 200,
+          url: '/audio/gamma-waves/gamma-wave3.mp3',
+        },
+      ]
+    }
   ]);
+
+  // State for playlist selection
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('ambient-sounds');
+  const [showPlaylistSelector, setShowPlaylistSelector] = useState(false);
+
+  // Get current playlist and tracks
+  const currentPlaylist = playlists.find(p => p.id === selectedPlaylistId) || playlists[0];
+  const fallbackTracks = useMemo(() => currentPlaylist?.tracks || [], [currentPlaylist]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentFallbackIndex, setCurrentFallbackIndex] = useState(0);
   const [isFallbackMode, setIsFallbackMode] = useState(true);
+  const playlistSelectorRef = useRef<HTMLDivElement>(null);
 
   // Update playback state when Spotify state changes
   useEffect(() => {
@@ -245,6 +297,25 @@ const handlePrevious = useCallback(async () => {
     }
   }, [isFallbackMode, isConnected, setVolume]);
 
+  // Handle playlist change
+  const handlePlaylistChange = useCallback((playlistId: string) => {
+    setSelectedPlaylistId(playlistId);
+    setCurrentFallbackIndex(0); // Reset to first track in new playlist
+    setShowPlaylistSelector(false);
+    
+    // Update current track if in fallback mode
+    if (isFallbackMode) {
+      const newPlaylist = playlists.find(p => p.id === playlistId);
+      if (newPlaylist && newPlaylist.tracks.length > 0) {
+        setLocalPlayback(prev => ({ 
+          ...prev, 
+          track: newPlaylist.tracks[0],
+          position: 0
+        }));
+      }
+    }
+  }, [isFallbackMode, playlists]);
+
   // Initialize fallback player
   useEffect(() => {
     if (isFallbackMode && fallbackTracks.length > 0) {
@@ -262,6 +333,23 @@ const handlePrevious = useCallback(async () => {
       // handlePlayPause();
     }
   }, [sessionActive, settings?.spotify_enabled]);
+
+  // Close playlist selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (playlistSelectorRef.current && !playlistSelectorRef.current.contains(event.target as Node)) {
+        setShowPlaylistSelector(false);
+      }
+    };
+
+    if (showPlaylistSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showPlaylistSelector]);
 
   const currentTrack = localPlayback.track || fallbackTracks[currentFallbackIndex];
   const progressPercentage = localPlayback.duration > 0 
@@ -327,6 +415,43 @@ const handlePrevious = useCallback(async () => {
             Music Player
           </h3>
           
+          {/* Playlist Selector */}
+          <div className="relative" ref={playlistSelectorRef}>
+            <button
+              onClick={() => setShowPlaylistSelector(!showPlaylistSelector)}
+              className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <ListMusic className="w-4 h-4" />
+              <span className="text-gray-700 dark:text-gray-300">{currentPlaylist.name}</span>
+            </button>
+            
+            {/* Playlist Dropdown */}
+            {showPlaylistSelector && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+                <div className="p-2">
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 px-2">
+                    Select Playlist
+                  </div>
+                  {playlists.map((playlist) => (
+                    <button
+                      key={playlist.id}
+                      onClick={() => handlePlaylistChange(playlist.id)}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                        selectedPlaylistId === playlist.id
+                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      <div className="font-medium">{playlist.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {playlist.tracks.length} tracks
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
