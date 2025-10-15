@@ -32,6 +32,15 @@ export default function HomePage() {
     // Refresh heatmap data to show the new session
     refetchHeatmap()
     
+    // Broadcast to other tabs/devices that heatmap data has been updated
+    try {
+      localStorage.setItem('heatmap-data-updated', Date.now().toString())
+      // Remove the item immediately to trigger storage event
+      localStorage.removeItem('heatmap-data-updated')
+    } catch (error) {
+      console.warn('Could not broadcast heatmap update:', error)
+    }
+    
     // Show notification if permission granted
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Session Complete!', {

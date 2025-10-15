@@ -745,9 +745,17 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
   const [data, setData] = useState<HeatmapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     try {
+      // Skip fetch if data was fetched recently (within 30 seconds) unless forced
+      const now = Date.now();
+      if (!forceRefresh && data && (now - lastFetchTime) < 30000) {
+        console.log('Skipping heatmap fetch - data is recent');
+        return;
+      }
+
       setLoading(true);
       setError(null);
       
@@ -755,6 +763,10 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
       if (startDate) queryParams.append('start_date', startDate);
       if (endDate) queryParams.append('end_date', endDate);
       
+      // Add timestamp to prevent caching
+      queryParams.append('_t', now.toString());
+      
+      console.log('Fetching heatmap data...');
       const response = await fetch(`/api/stats/heatmap?${queryParams}`);
       
       if (!response.ok) {
@@ -763,18 +775,114 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
       
       const result = await response.json();
       setData(result);
+      setLastFetchTime(now);
+      console.log('Heatmap data updated successfully');
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch heatmap data'));
+      console.error('Error fetching heatmap data:', err);
     } finally {
       setLoading(false);
     }
+  }, [startDate, endDate, data, lastFetchTime]);
+
+  // Initial fetch
+  React.useEffect(() => {
+    fetchData(true); // Force initial fetch
   }, [startDate, endDate]);
 
+  // Auto-refresh on window focus (when user switches back to tab/device)
   React.useEffect(() => {
-    fetchData();
+    const handleFocus = () => {
+      console.log('Window focused - refreshing heatmap data');
+      fetchData(false); // Don't force, respect the 30-second cooldown
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible - refreshing heatmap data');
+        fetchData(false); // Don't force, respect the 30-second cooldown
+      }
+    };
+
+    // Listen for window focus and visibility changes
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  // Periodic refresh every 2 minutes when tab is active
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        console.log('Periodic refresh - updating heatmap data');
+        fetchData(false); // Don't force, respect the 30-second cooldown
+      }
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // Listen for storage events (cross-tab communication)
+  React.useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Listen for heatmap data updates from other tabs/devices
+      if (e.key === 'heatmap-data-updated' && e.newValue) {
+        console.log('Heatmap data updated in another tab - refreshing');
+        fetchData(false); // Don't force, respect the 30-second cooldown
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [fetchData]);
+
+  // Detect when user returns to the app after being away (cross-device sync)
+  React.useEffect(() => {
+    let lastActiveTime = Date.now();
+    
+    const updateLastActiveTime = () => {
+      lastActiveTime = Date.now();
+    };
+
+    const checkForUpdates = () => {
+      const timeSinceLastActive = Date.now() - lastActiveTime;
+      // If user was away for more than 30 seconds, refresh data when they return
+      if (timeSinceLastActive > 30000) {
+        console.log('User returned after being away - refreshing heatmap data');
+        fetchData(false); // Don't force, respect the 30-second cooldown
+      }
+      updateLastActiveTime();
+    };
+
+    // Track user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, updateLastActiveTime, true);
+    });
+
+    // Check for updates when user becomes active
+    document.addEventListener('visibilitychange', checkForUpdates);
+    window.addEventListener('focus', checkForUpdates);
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, updateLastActiveTime, true);
+      });
+      document.removeEventListener('visibilitychange', checkForUpdates);
+      window.removeEventListener('focus', checkForUpdates);
+    };
+  }, [fetchData]);
+
+  return { 
+    data, 
+    loading, 
+    error, 
+    refetch: () => fetchData(true) // Force refresh when manually called
+  };
 }
 
 // Utility function to generate mock heatmap data for development
