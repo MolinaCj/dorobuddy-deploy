@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
     const isLeapYear = (currentYear % 4 === 0 && currentYear % 100 !== 0) || (currentYear % 400 === 0);
     const daysInYear = isLeapYear ? 366 : 365;
     
-    defaultStartDate.setDate(defaultEndDate.getDate() - daysInYear);
+    // Subtract (daysInYear - 1) to get exactly daysInYear days in the range (inclusive)
+    defaultStartDate.setDate(defaultEndDate.getDate() - (daysInYear - 1));
 
     const queryStartDate = startDate || defaultStartDate.toISOString().split('T')[0];
     const queryEndDate = endDate || defaultEndDate.toISOString().split('T')[0];
