@@ -396,32 +396,29 @@ export default function Heatmap({
       {showStats && (
         <div className="space-y-4">
           {/* Primary Stats - Mobile Responsive */}
-          <div className="space-y-3">
-            {/* Mobile: Stack vertically on small screens */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:justify-between gap-3 lg:gap-4">
-              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                <Target className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{stats.totalSessions} sessions</span>
-              </div>
-              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                <Calendar className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{stats.activeDays}/{stats.totalDays} days active</span>
-              </div>
-              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                <Flame className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{stats.currentStreak} day streak</span>
-              </div>
-              <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
-                <TrendingUp className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{stats.averageSessions} sessions/day</span>
-              </div>
-              {stats.averageTotalFocusHoursPerDay > 0 && (
-                <div className="flex items-center space-x-1 text-sm text-blue-600 dark:text-blue-400">
-                  <Clock className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{stats.averageTotalFocusHoursPerDay}h/day</span>
-                </div>
-              )}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+              <Target className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{stats.totalSessions} sessions</span>
             </div>
+            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+              <Calendar className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{stats.activeDays}/{stats.totalDays} days active</span>
+            </div>
+            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+              <Flame className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{stats.currentStreak} day streak</span>
+            </div>
+            <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
+              <TrendingUp className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{stats.averageSessions} sessions/day</span>
+            </div>
+            {stats.averageTotalFocusHoursPerDay > 0 && (
+              <div className="flex items-center space-x-1 text-sm text-blue-600 dark:text-blue-400">
+                <Clock className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{stats.averageTotalFocusHoursPerDay}h/day</span>
+              </div>
+            )}
           </div>
           
           {/* Activity Level & Enhanced Metrics - Mobile Responsive */}
