@@ -110,13 +110,15 @@ const switchMode = useCallback(
         // If switching away from stopwatch and it was running, save the session first
         if (prev.mode === 'stopwatch' && prev.isActive && stopwatchStartTimeRef.current) {
           const endTime = new Date()
-          const duration = prev.stopwatchTime
+          const sessionStartTime = stopwatchStartTimeRef.current
+          const sessionDuration = Math.floor((endTime.getTime() - sessionStartTime.getTime()) / 1000)
           
           // Add to daily total (pass current total time for proper accumulation)
-          addTime(duration)
+          addTime(prev.stopwatchTime)
           
           // Save stopwatch session in background
-          saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+          // Only save the incremental time for this session, not the total stopwatch time
+          saveSession(sessionDuration, sessionStartTime, endTime, selectedTaskId || undefined)
             .then((session) => {
               console.log('Stopwatch session saved on mode switch:', session)
             })
@@ -394,13 +396,15 @@ const switchMode = useCallback(
       // If stopping stopwatch and it was running, save the session
       if (prev.mode === 'stopwatch' && prev.isActive && !newIsActive && stopwatchStartTimeRef.current) {
         const endTime = new Date()
-        const duration = prev.stopwatchTime
+        const sessionStartTime = stopwatchStartTimeRef.current
+        const sessionDuration = Math.floor((endTime.getTime() - sessionStartTime.getTime()) / 1000)
         
         // Add to daily total (pass current total time for proper accumulation)
-        addTime(duration)
+        addTime(prev.stopwatchTime)
         
         // Save stopwatch session in background (don't await to avoid blocking UI)
-        saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+        // Only save the incremental time for this session, not the total stopwatch time
+        saveSession(sessionDuration, sessionStartTime, endTime, selectedTaskId || undefined)
           .then((session) => {
             console.log('Stopwatch session saved:', session)
           })
@@ -474,13 +478,15 @@ const switchMode = useCallback(
       // If resetting stopwatch and it was running, save the session first
       if (prev.mode === 'stopwatch' && prev.isActive && stopwatchStartTimeRef.current) {
         const endTime = new Date()
-        const duration = prev.stopwatchTime
+        const sessionStartTime = stopwatchStartTimeRef.current
+        const sessionDuration = Math.floor((endTime.getTime() - sessionStartTime.getTime()) / 1000)
         
         // Add to daily total (pass current total time for proper accumulation)
-        addTime(duration)
+        addTime(prev.stopwatchTime)
         
         // Save stopwatch session in background
-        saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+        // Only save the incremental time for this session, not the total stopwatch time
+        saveSession(sessionDuration, sessionStartTime, endTime, selectedTaskId || undefined)
           .then((session) => {
             console.log('Stopwatch session saved on reset:', session)
           })
