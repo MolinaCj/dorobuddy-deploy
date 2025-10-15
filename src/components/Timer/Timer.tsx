@@ -103,52 +103,82 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   // Switch timer mode
 const switchMode = useCallback(
   (newMode: TimerMode, incrementSession: boolean = false) => {
-    setState(prev => {
-      // If switching away from stopwatch and it was running, save the session first
-      if (prev.mode === 'stopwatch' && prev.isActive && stopwatchStartTimeRef.current) {
-        const endTime = new Date()
-        const duration = prev.stopwatchTime
+    console.log('Switching mode:', { from: state.mode, to: newMode, incrementSession })
+    
+    try {
+      setState(prev => {
+        // If switching away from stopwatch and it was running, save the session first
+        if (prev.mode === 'stopwatch' && prev.isActive && stopwatchStartTimeRef.current) {
+          const endTime = new Date()
+          const duration = prev.stopwatchTime
+          
+          // Add to daily total (pass current total time for proper accumulation)
+          addTime(duration)
+          
+          // Save stopwatch session in background
+          saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
+            .then((session) => {
+              console.log('Stopwatch session saved on mode switch:', session)
+            })
+            .catch((error) => {
+              console.error('Failed to save stopwatch session on mode switch:', error)
+            })
+          
+          stopwatchStartTimeRef.current = null
+        }
         
-        // Add to daily total (pass current total time for proper accumulation)
-        addTime(duration)
+        const newDuration = getDuration(newMode)
+        console.log('New duration for mode:', { newMode, newDuration })
         
-        // Save stopwatch session in background
-        saveSession(duration, stopwatchStartTimeRef.current, endTime, selectedTaskId || undefined)
-          .then((session) => {
-            console.log('Stopwatch session saved on mode switch:', session)
-          })
-          .catch((error) => {
-            console.error('Failed to save stopwatch session on mode switch:', error)
-          })
-        
-        stopwatchStartTimeRef.current = null
-      }
+        return {
+          ...prev,
+          mode: newMode,
+          timeRemaining: newDuration, // now always fresh
+          isActive: false,
+          sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
+          stopwatchTime: newMode === 'stopwatch' ? prev.stopwatchTime : 0, // Preserve stopwatch time when switching to stopwatch
+          // Removed reverse mode logic
+        }
+      })
       
-      return {
-        ...prev,
-        mode: newMode,
-        timeRemaining: getDuration(newMode), // now always fresh
-        isActive: false,
-        sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
-        stopwatchTime: newMode === 'stopwatch' ? prev.stopwatchTime : 0, // Preserve stopwatch time when switching to stopwatch
-        // Removed reverse mode logic
+      hasCompletedRef.current = false
+      console.log('Mode switch state updated successfully')
+
+      if (settings && newMode !== 'stopwatch') {
+        const shouldAutoStart =
+          (newMode !== 'work' && settings.auto_start_breaks) ||
+          (newMode === 'work' && settings.auto_start_pomodoros)
+
+        console.log('Auto-start check:', { shouldAutoStart, newMode, auto_start_breaks: settings.auto_start_breaks, auto_start_pomodoros: settings.auto_start_pomodoros })
+
+        if (shouldAutoStart) {
+          setTimeout(() => {
+            console.log('Auto-starting timer for mode:', newMode)
+            setState(prev => ({ ...prev, isActive: true }))
+          }, 1000)
+        }
       }
-    })
-    hasCompletedRef.current = false
-
-    if (settings && newMode !== 'stopwatch') {
-      const shouldAutoStart =
-        (newMode !== 'work' && settings.auto_start_breaks) ||
-        (newMode === 'work' && settings.auto_start_pomodoros)
-
-      if (shouldAutoStart) {
-        setTimeout(() => {
-          setState(prev => ({ ...prev, isActive: true }))
-        }, 1000)
+    } catch (error) {
+      console.error('Error in switchMode:', error)
+      
+      // Fallback: Force the mode switch even if there's an error
+      try {
+        setState(prev => ({
+          ...prev,
+          mode: newMode,
+          timeRemaining: getDuration(newMode),
+          isActive: false,
+          sessionsCompleted: incrementSession ? prev.sessionsCompleted + 1 : prev.sessionsCompleted,
+          stopwatchTime: newMode === 'stopwatch' ? prev.stopwatchTime : 0,
+        }))
+        hasCompletedRef.current = false
+        console.log('Fallback mode switch completed')
+      } catch (fallbackError) {
+        console.error('Fallback mode switch also failed:', fallbackError)
       }
     }
   },
-  [settings, getDuration, saveSession, selectedTaskId] // depends on settings and getDuration
+  [settings, getDuration, saveSession, selectedTaskId, state.mode] // depends on settings and getDuration
 )
 
 
@@ -160,84 +190,126 @@ const switchMode = useCallback(
     const currentMode = state.mode
     const currentSessions = state.sessionsCompleted
 
+    console.log('Timer completion started:', { currentMode, currentSessions, isMobile: /Mobi|Android/i.test(navigator.userAgent) })
+
     // Don't handle completion for stopwatch mode
     if (currentMode === 'stopwatch') {
       return
     }
 
-    // Play completion sound
-    if (settings) {
-      const soundId = currentMode === 'work' 
-        ? settings.notification_sound 
-        : settings.break_sound
-      playSound(soundId, settings.notification_volume)
-    }
-
-    // Show notification based on current mode
-    if ('Notification' in window && Notification.permission === 'granted') {
-      if (currentMode === 'work') {
-        new Notification('Work Session Complete!', {
-          body: 'Great job! Time for a break.',
-          icon: '/icons/icon-192x192.svg',
-          badge: '/icons/icon-192x192.svg',
-        })
-      } else {
-        new Notification('Break Complete!', {
-          body: 'Break is over. Ready to focus?',
-          icon: '/icons/icon-192x192.svg',
-          badge: '/icons/icon-192x192.svg',
-        })
+    try {
+      // Play completion sound
+      if (settings) {
+        const soundId = currentMode === 'work' 
+          ? settings.notification_sound 
+          : settings.break_sound
+        playSound(soundId, settings.notification_volume)
       }
-    }
 
-    // Record session in database only for work sessions
-    if (currentMode === 'work') {
-      try {
-        const duration = getDuration(currentMode)
-        const response = await fetch('/api/sessions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            task_id: selectedTaskId || null,
-            session_type: 'work',
-            planned_duration: duration,
-            actual_duration: duration,
-            notes: null
+      // Show notification based on current mode (with mobile fallback)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          if (currentMode === 'work') {
+            new Notification('Work Session Complete!', {
+              body: 'Great job! Time for a break.',
+              icon: '/icons/icon-192x192.svg',
+              badge: '/icons/icon-192x192.svg',
+            })
+          } else {
+            new Notification('Break Complete!', {
+              body: 'Break is over. Ready to focus?',
+              icon: '/icons/icon-192x192.svg',
+              badge: '/icons/icon-192x192.svg',
+            })
+          }
+        } catch (notificationError) {
+          console.warn('Notification failed (mobile may not support):', notificationError)
+        }
+      }
+
+      // Record session in database only for work sessions
+      if (currentMode === 'work') {
+        try {
+          const duration = getDuration(currentMode)
+          console.log('Attempting to save session:', { duration, selectedTaskId })
+          
+          const response = await fetch('/api/sessions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              task_id: selectedTaskId || null,
+              session_type: 'work',
+              planned_duration: duration,
+              actual_duration: duration,
+              notes: null
+            })
           })
-        })
 
-        if (response.ok) {
-          const { session } = await response.json()
-          console.log('Session recorded successfully:', session)
-          onSessionComplete(session.id)
-        } else {
-          console.error('Failed to record session:', await response.text())
+          if (response.ok) {
+            const { session } = await response.json()
+            console.log('Session recorded successfully:', session)
+            onSessionComplete(session.id)
+          } else {
+            const errorText = await response.text()
+            console.error('Failed to record session:', errorText)
+            onSessionComplete(`session-${Date.now()}`) // Fallback
+          }
+        } catch (error) {
+          console.error('Error recording session:', error)
           onSessionComplete(`session-${Date.now()}`) // Fallback
         }
-      } catch (error) {
-        console.error('Error recording session:', error)
-        onSessionComplete(`session-${Date.now()}`) // Fallback
       }
-    }
 
-    // Determine next mode
-    if (currentMode === 'work') {
-      const newSessionCount = currentSessions + 1
-      const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
+      // Determine next mode with mobile-specific handling
+      console.log('Determining next mode...')
       
-      // Check if it's time for a long break
-      if (newSessionCount % sessionsUntilLongBreak === 0) {
-        switchMode('longBreak', true)
+      if (currentMode === 'work') {
+        const newSessionCount = currentSessions + 1
+        const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
+        
+        console.log('Work session complete, sessions:', { newSessionCount, sessionsUntilLongBreak })
+        
+        // Check if it's time for a long break
+        if (newSessionCount % sessionsUntilLongBreak === 0) {
+          console.log('Switching to long break')
+          switchMode('longBreak', true)
+        } else {
+          console.log('Switching to short break')
+          switchMode('shortBreak', true)
+        }
       } else {
-        switchMode('shortBreak', true)
+        // Break is over, return to work
+        console.log('Break complete, switching to work')
+        switchMode('work', false)
       }
-    } else {
-      // Break is over, return to work
-      switchMode('work', false)
+      
+      console.log('Timer completion flow finished successfully')
+      
+    } catch (error) {
+      console.error('Error in timer completion flow:', error)
+      
+      // Fallback: Force mode switch even if other operations fail
+      try {
+        if (currentMode === 'work') {
+          const newSessionCount = currentSessions + 1
+          const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
+          
+          if (newSessionCount % sessionsUntilLongBreak === 0) {
+            switchMode('longBreak', true)
+          } else {
+            switchMode('shortBreak', true)
+          }
+        } else {
+          switchMode('work', false)
+        }
+        console.log('Fallback mode switch completed')
+      } catch (fallbackError) {
+        console.error('Fallback mode switch also failed:', fallbackError)
+      }
     }
-  }, [state.mode, state.sessionsCompleted, settings, playSound, onSessionComplete, switchMode])
+  }, [state.mode, state.sessionsCompleted, settings, playSound, onSessionComplete, switchMode, getDuration, selectedTaskId])
 
   // Timer tick
   useEffect(() => {
@@ -273,8 +345,14 @@ const switchMode = useCallback(
             clearInterval(intervalRef.current)
             intervalRef.current = null
           }
+          console.log('Timer reached zero, completing...')
           setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
-          handleTimerComplete()
+          
+          // Add a small delay to ensure state is updated before calling completion
+          setTimeout(() => {
+            console.log('Calling handleTimerComplete...')
+            handleTimerComplete()
+          }, 100)
         } else {
           setState(prev => ({ ...prev, timeRemaining: remaining }))
         }
