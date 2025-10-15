@@ -294,14 +294,20 @@ export default function Heatmap({
     // Only count days that are within the actual date range (not the extended week range)
     const startDate = new Date(data.start_date);
     const endDate = new Date(data.end_date);
+    // Set time to start/end of day to ensure proper comparison
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
     const totalDays = gridData.filter(d => {
       if (!d.date) return false;
       const dayDate = new Date(d.date);
+      dayDate.setHours(12, 0, 0, 0); // Set to noon for consistent comparison
       return dayDate >= startDate && dayDate <= endDate;
     }).length;
     const activeDays = gridData.filter(d => {
       if (!d.date || d.count === 0) return false;
       const dayDate = new Date(d.date);
+      dayDate.setHours(12, 0, 0, 0); // Set to noon for consistent comparison
       return dayDate >= startDate && dayDate <= endDate;
     }).length;
     const totalSessions = gridData.reduce((sum, d) => sum + d.count, 0);
