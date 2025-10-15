@@ -422,8 +422,8 @@ export default function Heatmap({
           </div>
           
           {/* Activity Level & Enhanced Metrics - Mobile Responsive */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 text-sm">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+          <div className="flex flex-wrap gap-3 sm:gap-4 text-sm">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 min-w-[140px] flex-1">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Activity Level</div>
               <div className={`font-semibold ${
                 stats.activityLevel === 'expert' ? 'text-purple-600 dark:text-purple-400' :
@@ -435,21 +435,21 @@ export default function Heatmap({
               </div>
             </div>
             
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 min-w-[140px] flex-1">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Consistency</div>
               <div className="font-semibold text-gray-900 dark:text-white">
                 {stats.consistency}%
               </div>
             </div>
             
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 min-w-[140px] flex-1">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Best Day</div>
               <div className="font-semibold text-gray-900 dark:text-white">
                 {stats.maxDailySessions} sessions
               </div>
             </div>
             
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 min-w-[140px] flex-1">
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">This Week</div>
               <div className="font-semibold text-gray-900 dark:text-white">
                 {stats.recentSessions} sessions
