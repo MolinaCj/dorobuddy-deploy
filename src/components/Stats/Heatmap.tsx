@@ -746,8 +746,41 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [isFetching, setIsFetching] = useState(false);
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+
+  // Retry function with exponential backoff
+  const retryWithBackoff = async (fn: () => Promise<any>, maxRetries = 3, baseDelay = 1000) => {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        const isLastAttempt = attempt === maxRetries;
+        const isServerError = error instanceof Error && (
+          error.message.includes('503') || 
+          error.message.includes('Service Unavailable') ||
+          error.message.includes('Failed to fetch')
+        );
+
+        if (isLastAttempt || !isServerError) {
+          throw error;
+        }
+
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`API request failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  };
 
   const fetchData = useCallback(async (forceRefresh = false) => {
+    // Prevent multiple simultaneous requests
+    if (isFetching) {
+      console.log('Fetch already in progress, skipping...');
+      return;
+    }
+
     try {
       // Skip fetch if data was fetched recently (within 30 seconds) unless forced
       const now = Date.now();
@@ -756,6 +789,7 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
         return;
       }
 
+      setIsFetching(true);
       setLoading(true);
       setError(null);
       
@@ -767,23 +801,42 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
       queryParams.append('_t', now.toString());
       
       console.log('Fetching heatmap data...');
-      const response = await fetch(`/api/stats/heatmap?${queryParams}`);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch heatmap data');
-      }
+      const result = await retryWithBackoff(async () => {
+        const response = await fetch(`/api/stats/heatmap?${queryParams}`, {
+          // Add timeout to prevent hanging requests
+          signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        return await response.json();
+      });
       
-      const result = await response.json();
       setData(result);
       setLastFetchTime(now);
+      setConsecutiveErrors(0); // Reset error count on success
       console.log('Heatmap data updated successfully');
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch heatmap data'));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch heatmap data';
+      setError(new Error(errorMessage));
+      setConsecutiveErrors(prev => prev + 1);
       console.error('Error fetching heatmap data:', err);
+      
+      // If we have existing data, don't clear it on error
+      if (!data) {
+        console.log('No existing data, showing error state');
+      } else {
+        console.log('Keeping existing data despite fetch error');
+      }
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
-  }, [startDate, endDate, data, lastFetchTime]);
+  }, [startDate, endDate, data, lastFetchTime, isFetching]);
 
   // Initial fetch
   React.useEffect(() => {
@@ -793,12 +846,22 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
   // Auto-refresh on window focus (when user switches back to tab/device)
   React.useEffect(() => {
     const handleFocus = () => {
+      // Skip auto-refresh if there are consecutive errors (reduce server load)
+      if (consecutiveErrors >= 2) {
+        console.log('Skipping auto-refresh due to consecutive errors');
+        return;
+      }
       console.log('Window focused - refreshing heatmap data');
       fetchData(false); // Don't force, respect the 30-second cooldown
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        // Skip auto-refresh if there are consecutive errors (reduce server load)
+        if (consecutiveErrors >= 2) {
+          console.log('Skipping auto-refresh due to consecutive errors');
+          return;
+        }
         console.log('Page became visible - refreshing heatmap data');
         fetchData(false); // Don't force, respect the 30-second cooldown
       }
@@ -812,19 +875,24 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchData]);
+  }, [fetchData, consecutiveErrors]);
 
   // Periodic refresh every 2 minutes when tab is active
   React.useEffect(() => {
     const interval = setInterval(() => {
       if (!document.hidden) {
+        // Skip periodic refresh if there are consecutive errors (reduce server load)
+        if (consecutiveErrors >= 2) {
+          console.log('Skipping periodic refresh due to consecutive errors');
+          return;
+        }
         console.log('Periodic refresh - updating heatmap data');
         fetchData(false); // Don't force, respect the 30-second cooldown
       }
     }, 120000); // 2 minutes
 
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, consecutiveErrors]);
 
   // Listen for storage events (cross-tab communication)
   React.useEffect(() => {
@@ -881,7 +949,8 @@ export function useHeatmapData(startDate?: string, endDate?: string) {
     data, 
     loading, 
     error, 
-    refetch: () => fetchData(true) // Force refresh when manually called
+    refetch: () => fetchData(true), // Force refresh when manually called
+    isFetching // Expose fetching state for UI
   };
 }
 

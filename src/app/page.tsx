@@ -23,7 +23,7 @@ export default function HomePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSession, setActiveSession] = useState<string | null>(null)
   // Use real heatmap data instead of mock data
-  const { data: heatmapData, loading: heatmapLoading, error: heatmapError, refetch: refetchHeatmap } = useHeatmapData()
+  const { data: heatmapData, loading: heatmapLoading, error: heatmapError, refetch: refetchHeatmap, isFetching: heatmapFetching } = useHeatmapData()
 
   const handleSessionComplete = (sessionId: string) => {
     console.log('Session completed:', sessionId)
@@ -311,12 +311,39 @@ export default function HomePage() {
                     </h2>
                     <button
                       onClick={refetchHeatmap}
-                      disabled={heatmapLoading}
-                      className="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white rounded-md transition-colors"
+                      disabled={heatmapLoading || heatmapFetching}
+                      className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                        heatmapError 
+                          ? 'bg-red-500 hover:bg-red-600 text-white' 
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      } disabled:bg-gray-400 disabled:cursor-not-allowed`}
                     >
-                      {heatmapLoading ? 'Refreshing...' : 'Refresh'}
+                      {heatmapLoading || heatmapFetching ? 'Refreshing...' : 
+                       heatmapError ? 'Retry' : 'Refresh'}
                     </button>
                   </div>
+                  
+                  {heatmapError && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                            Unable to load heatmap data
+                          </h3>
+                          <div className="mt-1 text-sm text-red-700 dark:text-red-300">
+                            {String(heatmapError).includes('503') 
+                              ? 'Server is temporarily unavailable. Please try again in a moment.'
+                              : 'There was a problem loading your activity data. Please try refreshing.'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <Heatmap
                     data={heatmapData}
                     compact={false}
