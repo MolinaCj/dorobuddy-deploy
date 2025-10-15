@@ -78,8 +78,8 @@ export default function MusicPlayer({
         },
         {
           id: 'nature1',
-          name: 'Forest Ambience',
-          artist: 'Nature Sounds',
+          name: 'Fly the Nest',
+          artist: 'Outside Broadcast Recordings',
           duration: 240,
           url: '/audio/ambient/forest.mp3',
         },
