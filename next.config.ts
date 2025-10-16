@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       process.env.CF_PAGES_COMMIT_SHA ||
       "local",
     NEXT_PUBLIC_APP_VERSION: pkg.version,
-    NEXT_PUBLIC_CREATOR_NAME: "Clent James Molina",
+    NEXT_PUBLIC_CREATOR_NAME: process.env.NEXT_PUBLIC_CREATOR_NAME || "clnt",
   },
 };
 
