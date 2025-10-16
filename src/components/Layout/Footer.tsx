@@ -1,6 +1,6 @@
 // components/Layout/Footer.tsx
 import React, { useEffect, useState } from 'react';
-import { Heart, Github, Coffee } from 'lucide-react';
+import { Github, Coffee } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface FooterProps {
@@ -103,7 +103,7 @@ export default function Footer({ className = '', compact = false }: FooterProps)
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-1 text-sm text-gray-500">
                 <span>Made with</span>
-                <Heart className="w-4 h-4 text-red-500 fill-current" />
+                🫶
                 <span></span>
               </div>
 
