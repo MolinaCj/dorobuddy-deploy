@@ -101,11 +101,11 @@ export default function Footer({ className = '', compact = false }: FooterProps)
 
             {/* Links and Actions */}
             <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-1 text-sm text-gray-500">
+              {/* <div className="flex items-center space-x-1 text-sm text-gray-500">
                 <span>Made with</span>
                 🫶
                 <span></span>
-              </div>
+              </div> */}
 
               <div className="flex items-center space-x-4">
                 <a
