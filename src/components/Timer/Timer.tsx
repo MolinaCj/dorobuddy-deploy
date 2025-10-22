@@ -29,7 +29,7 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
   const { saveSession, syncOfflineSessions } = useStopwatch()
-  const { addTime, resetAccumulatedTime, syncAccumulatedTime, getTodayTotal } = useDailyStopwatch()
+  const { addTime, resetAccumulatedTime, syncAccumulatedTime, getTodayTotal, refreshData } = useDailyStopwatch()
   
 
   // Timer state
@@ -140,6 +140,8 @@ const switchMode = useCallback(
           saveSession(sessionDuration, sessionStartTime, endTime, selectedTaskId || undefined)
             .then((session) => {
               console.log('Stopwatch session saved on mode switch:', session)
+              // Refresh daily data from server to sync with database
+              refreshData()
             })
             .catch((error) => {
               console.error('Failed to save stopwatch session on mode switch:', error)
@@ -429,6 +431,8 @@ const switchMode = useCallback(
         saveSession(sessionDuration, sessionStartTime, endTime, selectedTaskId || undefined)
           .then((session) => {
             console.log('Stopwatch session saved:', session)
+            // Refresh daily data from server to sync with database
+            refreshData()
           })
           .catch((error) => {
             console.error('Failed to save stopwatch session:', error)
@@ -516,6 +520,8 @@ const switchMode = useCallback(
         saveSession(sessionDuration, sessionStartTime, endTime, selectedTaskId || undefined)
           .then((session) => {
             console.log('Stopwatch session saved on reset:', session)
+            // Refresh daily data from server to sync with database
+            refreshData()
           })
           .catch((error) => {
             console.error('Failed to save stopwatch session on reset:', error)
