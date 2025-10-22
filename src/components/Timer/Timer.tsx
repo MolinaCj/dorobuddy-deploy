@@ -325,11 +325,14 @@ const switchMode = useCallback(
 
     if (state.mode === 'stopwatch') {
       // Stopwatch mode - count up
-      startTimeRef.current = Date.now() - (state.stopwatchTime * 1000)
+      // Use the proper start time reference that's set when stopwatch starts
+      if (!stopwatchStartTimeRef.current) {
+        stopwatchStartTimeRef.current = new Date(Date.now() - (state.stopwatchTime * 1000))
+      }
 
       intervalRef.current = setInterval(() => {
-        const now = Date.now()
-        const elapsed = Math.floor((now - startTimeRef.current!) / 1000)
+        const now = new Date()
+        const elapsed = Math.floor((now.getTime() - stopwatchStartTimeRef.current!.getTime()) / 1000)
         
         setState(prev => ({ ...prev, stopwatchTime: elapsed }))
       }, 100)
@@ -417,7 +420,12 @@ const switchMode = useCallback(
       
       // If starting stopwatch, record the start time and sync accumulated time
       if (prev.mode === 'stopwatch' && !prev.isActive && newIsActive) {
-        stopwatchStartTimeRef.current = new Date()
+        // If resuming (not starting fresh), adjust start time to account for current elapsed time
+        if (prev.stopwatchTime > 0) {
+          stopwatchStartTimeRef.current = new Date(Date.now() - (prev.stopwatchTime * 1000))
+        } else {
+          stopwatchStartTimeRef.current = new Date()
+        }
         // Sync accumulated time with current stopwatch time to prevent incorrect calculations after page reload
         syncAccumulatedTime(prev.stopwatchTime)
       }
