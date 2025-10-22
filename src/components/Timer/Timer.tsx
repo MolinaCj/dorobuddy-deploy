@@ -33,13 +33,28 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   
 
   // Timer state
-  const [state, setState] = useState<TimerState>({
-    mode: 'work',
-    timeRemaining: 1500, // 25 minutes default
-    isActive: false,
-    sessionsCompleted: 0,
-    stopwatchTime: 0, // Start at 0 for stopwatch
-    // isReversed: false, // Commented out reverse mode
+  const [state, setState] = useState<TimerState>(() => {
+    // Try to restore stopwatch time from localStorage on initialization
+    if (typeof window !== 'undefined') {
+      const savedStopwatchTime = localStorage.getItem('stopwatch_time');
+      if (savedStopwatchTime) {
+        return {
+          mode: 'work',
+          timeRemaining: 1500,
+          isActive: false,
+          sessionsCompleted: 0,
+          stopwatchTime: parseInt(savedStopwatchTime, 10) || 0,
+        };
+      }
+    }
+    return {
+      mode: 'work',
+      timeRemaining: 1500, // 25 minutes default
+      isActive: false,
+      sessionsCompleted: 0,
+      stopwatchTime: 0, // Start at 0 for stopwatch
+      // isReversed: false, // Commented out reverse mode
+    };
   })
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -97,8 +112,12 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
     }
   }, [settings])
 
-
-
+  // Save stopwatch time to localStorage whenever it changes
+  useEffect(() => {
+    if (state.mode === 'stopwatch') {
+      localStorage.setItem('stopwatch_time', state.stopwatchTime.toString());
+    }
+  }, [state.stopwatchTime, state.mode])
 
   // Switch timer mode
 const switchMode = useCallback(
@@ -508,6 +527,8 @@ const switchMode = useCallback(
       // Reset accumulated time tracking when resetting stopwatch (but keep daily total)
       if (prev.mode === 'stopwatch') {
         resetAccumulatedTime()
+        // Clear localStorage when resetting stopwatch
+        localStorage.removeItem('stopwatch_time')
       }
       
       return {
@@ -530,6 +551,8 @@ const switchMode = useCallback(
       stopwatchTime: 0, // Reset stopwatch time
       // isReversed: false, // Commented out reverse mode
     })
+    // Clear localStorage when resetting all
+    localStorage.removeItem('stopwatch_time')
     hasCompletedRef.current = false
   }
 
